@@ -2,7 +2,8 @@
 import { Host } from './net.js';
 import { players, BTN, COLORS, settings, saveSettings, beginFrame, endFrame, applyPacket, initKeyboard, activePlayers } from './input.js';
 import { audio } from './audio.js';
-import { CHANNELS } from './channels.js';
+import { CHANNELS, visibleChannels } from './channels.js';
+import { hb, saveHb, cheat } from './cheats.js';
 import { getMe, resetMe } from './me.js';
 
 const $ = (s) => document.querySelector(s);
@@ -127,7 +128,7 @@ function buildGrid() {
   grid.innerHTML = '';
   thumbs.length = 0;
   for (let i = 0; i < 12; i++) {
-    const ch = CHANNELS[app.page * 12 + i];
+    const ch = visibleChannels()[app.page * 12 + i];
     const el = document.createElement('div');
     el.className = 'ch' + (ch ? '' : ' empty');
     if (ch) {
@@ -235,6 +236,7 @@ function makeApi(ch) {
       startGame(next);
     },
     clicker: () => app.lastClicker,
+    homebrewChanged: () => { applyCheats(); buildGrid(); },
   };
 }
 
@@ -259,6 +261,24 @@ function openPanel(kind) {
       <div class="slots">${players.map((p) => `<div class="slot ${p.link ? 'on' : ''}" style="color:${p.link ? p.color : '#b8bec5'}">P${p.index + 1}<br><span class="small">${p.link ? (p.hasMotion ? 'connected · motion ✓' : 'connected · no motion') : 'waiting…'}</span></div>`).join('')}</div>
       <div style="text-align:center"><div class="pill" data-click="panel-close">OK</div></div>`;
     updateCodeUIInPanel();
+  } else if (kind === 'board') {
+    const d = new Date().toLocaleDateString([], { month: 'numeric', day: 'numeric' });
+    box.innerHTML = `
+      <h1>✉ Woo Message Board <span class="small dim">${d}</span></h1>
+      <div class="letters">
+        <div class="letter" data-click="letter" data-l="welcome"><span class="env">✉</span><b>Welcome to Woo!</b><span class="dim">from: Woo</span></div>
+        <div class="letter" data-click="connect"><span class="env">📱</span><b>Connect your Woo Remotes</b><span class="dim">from: Woo</span></div>
+        <div class="letter" data-click="letter" data-l="tips"><span class="env">✉</span><b>Tips &amp; tricks</b><span class="dim">from: a friend</span></div>
+        <div class="letter red" data-click="letterbomb"><span class="env">💣</span><b>${hb.installed ? 'Opened. You know what you did.' : '!!! YOU HAVE WON A FREE CHANNEL !!!'}</b><span class="dim">from: ???</span></div>
+      </div>
+      <div style="text-align:center;margin-top:2vh"><div class="pill" data-click="panel-close">Close</div></div>`;
+  } else if (kind.startsWith('letter:')) {
+    const L = {
+      welcome: ['Welcome to Woo!', 'Thank you for choosing Woo, the console that is definitely not a copy of anything.<br><br>Point. Swing. Accidentally hit the lamp. We are not liable for the lamp.<br><br>— The Woo Team (one guy and a lot of coffee)'],
+      tips: ['Tips & tricks', '• Stand on your friends\' heads in Super Woo Bros.<br>• In Woo Kart, hold B in a corner and let go when the sparks turn orange.<br>• In bowling, twist your wrist while throwing.<br>• Never open red letters from strangers. Seriously. Do not. 👀'],
+    }[kind.slice(7)] || ['?', '?'];
+    box.innerHTML = `<h1>${L[0]}</h1><p style="line-height:1.6">${L[1]}</p>
+      <div style="text-align:center;margin-top:2vh"><div class="pill" data-click="board">Back</div></div>`;
   } else if (kind === 'settings') {
     box.innerHTML = `
       <h1>woo Settings</h1>
@@ -273,6 +293,44 @@ function openPanel(kind) {
 }
 function updateCodeUIInPanel() { updateCodeUI(); app.panelOpen = 'connect'; }
 function closePanel() { app.panelOpen = null; layers.panel.classList.add('hidden'); }
+
+// ---------- Letter Bomb ----------
+function letterBomb() {
+  if (app.letterBombing) return;
+  app.letterBombing = true;
+  const el = document.createElement('div');
+  el.className = 'letterbomb';
+  screenEl.appendChild(el);
+  const lines = hb.installed
+    ? ['> letterbomb.bin already applied.', '> nothing left to hack. go play outside.', '']
+    : ['WOO MESSAGE BOARD v4.3E', '> opening letter from ???', '> parsing envelope… 0xDEADBEEF', '> buffer overflow in sticker renderer (oops)',
+       '> injecting payload: boot.elf', '> disabling the fun police… OK', '> downloading Homebrew Channel… ██████████ 100%',
+       '> installing secret stuff…', '> done. your warranty is now void (it never existed).', ''];
+  let i = 0;
+  audio.play('beep');
+  const tick = setInterval(() => {
+    if (i < lines.length) {
+      el.innerHTML += `<div>${lines[i]}</div>`;
+      audio.play(i % 3 ? 'hover' : 'beep');
+      if (i === 3) { screenEl.classList.add('glitch'); audio.play('break'); for (const p of players) rumble(p.index, 300); }
+      i++;
+      return;
+    }
+    clearInterval(tick);
+    setTimeout(() => {
+      screenEl.classList.remove('glitch');
+      el.remove();
+      app.letterBombing = false;
+      if (!hb.installed) {
+        hb.installed = true; saveHb();
+        audio.play('powerup');
+        toast('Homebrew Channel installed! Check page 1.');
+        app.page = 0; buildGrid();
+      }
+    }, 900);
+  }, 420);
+}
+function applyCheats() { screenEl.classList.toggle('disco', cheat('disco')); }
 
 // ---------- HOME menu ----------
 function openHome() {
@@ -307,6 +365,9 @@ const actions = {
   prevpage: () => { app.page = 0; buildGrid(); audio.play('click'); },
   settings: () => { audio.play('click'); openPanel('settings'); },
   connect: () => { audio.play('click'); openPanel('connect'); },
+  board: () => { audio.play('click'); openPanel('board'); },
+  letter: (el) => { audio.play('click'); openPanel('letter:' + el.dataset.l); },
+  letterbomb: () => { closePanel(); letterBomb(); },
   'panel-close': () => { audio.play('back'); closePanel(); },
   'sens-': () => { settings.sens = Math.max(0.3, settings.sens - 0.1); saveSettings(); openPanel('settings'); },
   'sens+': () => { settings.sens = Math.min(3, settings.sens + 0.1); saveSettings(); openPanel('settings'); },
@@ -419,6 +480,7 @@ function enterMenu() {
 
 // ---------- boot ----------
 initKeyboard(screenEl);
+applyCheats();
 layers.warning.addEventListener('mousedown', () => setTimeout(enterMenu, 0));
 const unlock = () => {
   audio.init();

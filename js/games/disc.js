@@ -2,7 +2,7 @@
 import { overlay } from './common.js';
 
 export function create(api) {
-  const games = api.channels.filter((c) => !['disc', 'me'].includes(c.id));
+  const games = api.channels.filter((c) => !['disc', 'me', 'homebrew'].includes(c.id));
   const pick = games[Math.floor(Math.random() * games.length)];
   const el = overlay(api, `
     <h1>Reading disc…</h1>

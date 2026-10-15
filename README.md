@@ -21,6 +21,7 @@ original knock-off written from scratch in plain JavaScript.
 | **Woo Play: Duck Blaster** | Shooting gallery for everyone at once | Pointer, **B/A** fire |
 | **Woo Fishing** | Hold your lure still, yank the phone up when it bites | Pointer |
 | **Woo Tanks!** | Co-op top-down tank missions | D-pad drive, pointer aim, **A/B** fire, **1** mine |
+| **???** | There's a suspicious red letter in the message board (✉). Don't open it. | — |
 
 The menu works like you remember: a 4×3 grid of channels, click one to get a big preview with
 **Woo Menu** / **Start**, a clock at the bottom, a round **woo** button (settings) on the left and an
