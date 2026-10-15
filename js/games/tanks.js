@@ -1,5 +1,5 @@
 // Woo Tanks! — co-op top-down tank battles. D-pad = drive, pointer = aim turret, A/B = fire, 1 = drop a mine.
-import { makeCanvas, overlay, bigText, resultsOverlay } from './common.js';
+import { makeCanvas, overlay, bigText, resultsOverlay, vignette } from './common.js';
 
 const W = 1280, H = 720, CELL = 40, COLS = 32, ROWS = 18;
 const MAPS = [
@@ -265,6 +265,8 @@ export function create(api) {
     ctx.strokeStyle = 'rgba(0,0,0,.04)'; ctx.lineWidth = 1;
     for (let c = 0; c <= COLS; c++) { ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, H); ctx.stroke(); }
     for (const tr of tracks) { ctx.save(); ctx.globalAlpha = tr.t / 8; ctx.translate(tr.x, tr.y); ctx.rotate(tr.a); ctx.fillStyle = '#9a8558'; ctx.fillRect(-3, -16, 6, 5); ctx.fillRect(-3, 11, 6, 5); ctx.restore(); }
+    if (grid.length) { ctx.fillStyle = 'rgba(60,40,10,.22)'; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (grid[r][c] !== '.') ctx.fillRect(c * CELL + 7, r * CELL + 7, CELL, CELL); }
+    for (const t of tanks) if (t.alive) { ctx.fillStyle = 'rgba(60,40,10,.25)'; ctx.beginPath(); ctx.ellipse(t.x + 5, t.y + 6, 22, 18, t.a, 0, 7); ctx.fill(); }
     if (grid.length) for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
       const t = grid[r][c];
       if (t === '#') { ctx.fillStyle = '#b48a4e'; ctx.fillRect(c * CELL, r * CELL, CELL, CELL); ctx.fillStyle = '#c99f62'; ctx.fillRect(c * CELL + 3, r * CELL + 3, CELL - 6, CELL - 10); }
@@ -280,6 +282,7 @@ export function create(api) {
       ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(t.aimX, t.aimY); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
       ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(t.aimX, t.aimY, 14, 0, 7); ctx.stroke();
     }
+    vignette(ctx, W, H, 0.3);
     ctx.fillStyle = '#5a4020'; ctx.font = '800 22px Arial'; ctx.textAlign = 'left';
     ctx.fillText(`Mission ${level + 1}   ·   Enemies left: ${tanks.filter((t) => t.ai && t.alive).length}`, 14, H - 10);
     if (state === 'intro') { ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(0, H / 2 - 90, W, 180); bigText(ctx, `Mission ${level + 1}`, W / 2, H / 2 - 20, 80, '#c33', '#fff'); bigText(ctx, `Enemy tanks: ${tanks.filter((t) => t.ai).length}`, W / 2, H / 2 + 50, 36, '#555', '#fff'); }

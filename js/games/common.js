@@ -81,3 +81,10 @@ export function resultsOverlay(api, title, rows, { again, quit, scoreLabel = 'Po
   const o = overlay(api, html, { again: () => { o.close(); if (again) again(); }, quit: () => api.exit() });
   return o;
 }
+
+// Soft dark edges — makes flat 2D scenes look a lot less flat.
+export function vignette(ctx, W, H, a = 0.3) {
+  const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, H * 1.05);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${a})`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}

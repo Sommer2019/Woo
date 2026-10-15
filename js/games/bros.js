@@ -38,6 +38,12 @@ function Level(width, theme, name) {
   L.coins = (x, y, n) => { for (let i = 0; i < n; i++) g[y][x + i] = COIN; return L; };
   L.ceiling = (x0, x1) => { for (let x = x0; x <= x1; x++) g[0][x] = BRICK; return L; };
   L.setFlag = (x) => { L.flag = x; return L; };
+  L.warps = [];
+  // a pipe you can enter with ↓: leads to `room` (a level function); you come back out of pipe `ret`
+  L.warp = (x, h, room, ret) => { L.pipe(x, h); L.warps.push({ x, room, ret }); return L; };
+  L.exitPipe = (x, h) => { L.pipe(x, h); L.warps.push({ x, back: true }); return L; };
+  L.secret = null; // { x, top } red flag = secret exit
+  L.wall = (x) => { for (let y = 0; y < ROWS; y++) g[y][x] = SOLID; return L; };
   return L;
 }
 
@@ -45,7 +51,7 @@ function level1() {
   const L = Level(212, 'day', 'World 1-1');
   L.ground(0, 68).ground(71, 85).ground(89, 150).ground(153, 211);
   L.row(16, 9, '?').row(20, 9, 'B?BMB').row(22, 5, '?');
-  L.pipe(28, 2).pipe(38, 3).pipe(46, 4).pipe(57, 4);
+  L.pipe(28, 2).pipe(38, 3).warp(46, 4, coinRoom, 57).pipe(57, 4);
   L.e(22, 'g').e(40, 'g').e(51, 'g').e(53, 'g');
   L.coins(62, 8, 4);
   L.row(77, 9, 'B?B').row(80, 5, 'BBBBBBBB').row(91, 5, 'BBB?').row(94, 9, 'M');
@@ -71,7 +77,7 @@ function level2() {
   for (let x = 44; x < 70; x += 6) { L.row(x, 11, '##'); L.row(x, 10, '##'); }
   L.e(48, 'g').e(54, 'g').e(60, 'k').e(66, 'g');
   L.coins(46, 7, 3).coins(58, 7, 3);
-  L.pipe(74, 3).pipe(78, 4);
+  L.pipe(74, 3).warp(78, 4, secretRoom, 146);
   L.row(86, 9, 'B?B?B').row(88, 5, 'S').e(90, 'g').e(92, 'g').e(96, 'k');
   L.row(100, 8, '########').coins(100, 7, 8).e(103, 'g', 6);
   L.stairs(110, 5, 1).e(118, 'g');
@@ -93,11 +99,46 @@ function level3() {
   L.setFlag(195);
   return L;
 }
-const LEVELS = [level1, level2, level3];
+// ---------- bonus rooms (reached through pipes) ----------
+function coinRoom() {
+  const L = Level(28, 'cave', 'Bonus Room');
+  L.isRoom = true; L.flag = 9999; L.start = 3;
+  L.ground(0, 27).ceiling(0, 27).wall(0).wall(27);
+  for (let r = 3; r <= 10; r += 2) L.coins(5, r, 16);
+  L.row(4, 11, '##'); L.row(10, 9, '###');
+  L.exitPipe(23, 2);
+  return L;
+}
+function secretRoom() {
+  const L = Level(46, 'cave', 'Secret Room');
+  L.isRoom = true; L.flag = 9999; L.start = 3;
+  L.ground(0, 45).ceiling(0, 45).wall(0).wall(45);
+  L.row(9, 10, '===').row(15, 8, '===').row(21, 6, '===').row(27, 8, '===').row(33, 10, '======');
+  L.coins(9, 9, 3).coins(15, 7, 3).coins(21, 5, 3).coins(27, 7, 3);
+  L.e(16, 'g', 7).e(28, 'k', 7);
+  L.exitPipe(5, 2);
+  L.secret = { x: 41, top: 3 };
+  return L;
+}
+function levelSecret() {
+  const L = Level(150, 'star', 'World ★-1');
+  L.ground(0, 20).ground(140, 149);
+  const plats = [[23, 11, 4], [30, 9, 4], [37, 7, 4], [44, 9, 3], [50, 11, 6], [60, 8, 4], [67, 6, 4], [74, 9, 5], [83, 11, 4], [90, 8, 4], [97, 10, 6], [107, 7, 4], [114, 9, 4], [121, 11, 5], [130, 9, 6]];
+  for (const [x, y, w] of plats) { L.row(x, y, '='.repeat(w)); L.coins(x, y - 2, w); }
+  L.row(8, 9, 'SM?S').row(55, 6, 'S').row(100, 6, 'M');
+  L.coins(6, 6, 10);
+  L.e(52, 'g', 10).e(76, 'k', 8).e(99, 'g', 9).e(123, 'g', 10);
+  L.stairs(141, 5, 1);
+  L.setFlag(147);
+  return L;
+}
+const SECRET_IDX = 3;
+const LEVELS = [level1, level2, level3, levelSecret];
 
 const THEMES = {
   day: { sky: ['#5fb0ff', '#bfe4ff'], hill: '#5ad15a', hill2: '#3fb34f', ground: '#c66a2a', grass: '#3cb043', brick: '#c0602a' },
   cave: { sky: ['#0c0d1a', '#1d1f36'], hill: '#1f2240', hill2: '#272a4f', ground: '#3b5bb5', grass: '#5675d6', brick: '#3b6fc0' },
+  star: { sky: ['#2a1060', '#c050c0'], hill: '#7a3ab0', hill2: '#5a2a90', ground: '#7a4ad8', grass: '#ffd23a', brick: '#a050e0' },
   sky: { sky: ['#ffb36b', '#ffe3b5'], hill: '#ffffff', hill2: '#ffeede', ground: '#c66a2a', grass: '#3cb043', brick: '#c0602a' },
 };
 
@@ -108,12 +149,14 @@ export function create(api) {
   let levelIdx = 0;
   let plist = [], enemies = [], items = [], parts = [], pops = [];
   let camX = 0, time = 300, lives = 5, state = 'title', stateT = 0, clock = 0;
+  let stack = null, warpTo = null, secretClear = false, secretsFound = 0;
   let ui = null;
   const tileCache = {};
 
   // ---------- setup ----------
   function startLevel(idx) {
     levelIdx = idx;
+    stack = null; warpTo = null; secretClear = false;
     L = LEVELS[idx]();
     grid = L.g; theme = THEMES[L.theme];
     enemies = []; items = []; parts = []; pops = [];
@@ -208,6 +251,35 @@ export function create(api) {
     if (pl.big) { pl.big = false; pl.y += pl.h - 42; pl.h = 42; pl.inv = 2; api.audio.play('shrink'); api.rumble(pl.p.index, 200); }
     else die(pl);
   }
+  function enterPipe(w) {
+    state = 'warp'; stateT = 0.8; warpTo = w;
+    const px = w.x * T + T;
+    for (const o of plist) { o.vx = 0; o.vy = 0; if (!o.dead) { o.x = px - o.w / 2 + (o.p.index - (plist.length - 1) / 2) * 8; } }
+    api.audio.play('shrink');
+  }
+  function finishWarp() {
+    const w = warpTo; warpTo = null;
+    if (w.back && stack) {
+      ({ L, grid, theme, enemies, items } = stack);
+      const ret = stack.ret; stack = null;
+      const top = grid.findIndex((row) => row[ret] === PIPE_TL);
+      plist.forEach((pl, i) => { Object.assign(pl, { x: ret * T + T - pl.w / 2 + (i - (plist.length - 1) / 2) * 8, y: top * T - pl.h - 2, vx: 0, vy: -650, dead: false, inv: 1 }); });
+      camX = Math.max(0, Math.min(L.width * T - VW, ret * T - VW * 0.4));
+    } else {
+      stack = { L, grid, theme, enemies, items, ret: w.ret };
+      L = w.room(); grid = L.g; theme = THEMES[L.theme];
+      enemies = []; items = [];
+      for (const e of L.ents) spawnEnemy(e);
+      plist.forEach((pl, i) => Object.assign(pl, { x: (L.start + i * 1.2) * T, y: 2 * T, vx: 0, vy: 0, dead: false }));
+      camX = 0;
+      api.toast(L.secret ? '🤫 A secret room…' : '💰 Bonus room!');
+    }
+    tileCache.theme = null;
+    parts = []; pops = [];
+    state = 'play';
+    api.audio.play('powerup');
+  }
+
   function die(pl) {
     if (pl.dead) return;
     pl.dead = true; pl.deadT = 0; pl.vy = -800; pl.vx = 0; pl.big = false; pl.h = 42;
@@ -264,6 +336,25 @@ export function create(api) {
     if (pl.x + pl.w > camX + VW - 4) { pl.x = camX + VW - 4 - pl.w; if (pl.vx > 0) pl.vx = 0; }
     if (pl.y > ROWS * T + 60) die(pl);
     pl.anim += Math.abs(pl.vx) * dt / 60;
+    if (pl.onGround && Math.abs(pl.vx) > 330 && Math.random() < dt * 14) parts.push({ x: pl.x + pl.w / 2 - Math.sign(pl.vx) * 10, y: pl.y + pl.h - 4, vx: -pl.vx * 0.1, vy: -60, t: 0.4, kind: 'dust' });
+    if (pl.onGround && !pl.wasGround) for (let k = 0; k < 4; k++) parts.push({ x: pl.x + pl.w / 2, y: pl.y + pl.h - 4, vx: (k - 1.5) * 90, vy: -80, t: 0.35, kind: 'dust' });
+    pl.wasGround = pl.onGround;
+    // pipes: stand on a warp pipe and press ↓
+    if (state === 'play' && pl.onGround && p.down(B.DOWN) && L.warps.length) {
+      const c = Math.floor((pl.x + pl.w / 2) / T), r = Math.floor((pl.y + pl.h + 4) / T);
+      const tile = grid[r] && grid[r][c];
+      if (tile === PIPE_TL || tile === PIPE_TR) {
+        const w = L.warps.find((wp) => wp.x === (tile === PIPE_TL ? c : c - 1));
+        if (w) enterPipe(w);
+      }
+    }
+    // secret exit (red flag)
+    if (L.secret && state === 'play' && pl.x + pl.w > L.secret.x * T + 20 && pl.y < (ROWS - 2) * T) {
+      state = 'clear'; stateT = 4; secretClear = true; secretsFound++;
+      pl.score += 5000;
+      api.audio.stopMusic(); api.audio.play('win'); api.audio.play('cheer');
+      for (const o of plist) api.rumble(o.p.index, 400);
+    }
     // coins
     for (const [cx, cy] of [[pl.x + 4, pl.y + 4], [pl.x + pl.w - 4, pl.y + 4], [pl.x + 4, pl.y + pl.h - 4], [pl.x + pl.w - 4, pl.y + pl.h - 4], [pl.x + pl.w / 2, pl.y + pl.h / 2]]) {
       const c = Math.floor(cx / T), r = Math.floor(cy / T);
@@ -344,11 +435,19 @@ export function create(api) {
       time -= dt * 2.2;
       if (time <= 0) { time = 0; plist.forEach((pl) => die(pl)); }
     }
+    if (state === 'warp') {
+      stateT -= dt;
+      for (const pl of plist) if (!pl.dead) pl.y += 70 * dt;
+      if (stateT <= 0) finishWarp();
+      draw(); return;
+    }
     if (state === 'clear') {
       stateT -= dt;
       for (const pl of plist) if (!pl.dead) { pl.vx = 200; pl.vy = Math.min(900, pl.vy + 2500 * dt); moveBody(pl, dt); pl.anim += dt * 3; }
       if (stateT <= 0) {
-        if (levelIdx + 1 < LEVELS.length) startLevel(levelIdx + 1);
+        let next = secretClear ? SECRET_IDX : levelIdx === SECRET_IDX ? 2 : levelIdx + 1;
+        if (next === SECRET_IDX && !secretClear) next = LEVELS.length;
+        if (next < LEVELS.length) startLevel(next);
         else victory();
       }
       draw(); return;
@@ -358,7 +457,7 @@ export function create(api) {
     enemies = enemies.filter((e) => !(e.dead && e.deadT <= 0));
     for (const it of items) updateItem(it, dt);
     items = items.filter((it) => !it.gone);
-    for (const pa of parts) { pa.t -= dt; pa.vy += 1800 * dt; pa.x += pa.vx * dt; pa.y += pa.vy * dt; }
+    for (const pa of parts) { pa.t -= dt; pa.vy += (pa.kind === 'dust' ? 0 : 1800) * dt; pa.x += pa.vx * dt; pa.y += pa.vy * dt; }
     parts = parts.filter((pa) => pa.t > 0);
     for (const po of pops) po.t -= dt;
     pops = pops.filter((po) => po.t > 0);
@@ -390,43 +489,112 @@ export function create(api) {
     if (tileCache[t]) return tileCache[t];
     const c = document.createElement('canvas'); c.width = T; c.height = T;
     const g = c.getContext('2d');
-    const box = (fill, line) => { g.fillStyle = fill; g.fillRect(0, 0, T, T); g.strokeStyle = line; g.lineWidth = 3; g.strokeRect(1.5, 1.5, T - 3, T - 3); };
+    const bevel = (fill, light, dark, r = 6) => {
+      g.fillStyle = dark; g.beginPath(); g.roundRect(1, 1, T - 2, T - 2, r); g.fill();
+      g.fillStyle = light; g.beginPath(); g.roundRect(1, 1, T - 4, T - 4, r); g.fill();
+      g.fillStyle = fill; g.beginPath(); g.roundRect(4, 4, T - 8, T - 8, r - 2); g.fill();
+    };
     switch (t) {
-      case GROUND: g.fillStyle = theme.ground; g.fillRect(0, 0, T, T); g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(4, 10, 8, 6); g.fillRect(26, 28, 10, 6); g.fillRect(14, 36, 6, 4); break;
-      case BRICK: g.fillStyle = theme.brick; g.fillRect(0, 0, T, T); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 3;
-        for (let y = 0; y < 4; y++) { g.beginPath(); g.moveTo(0, y * 12); g.lineTo(T, y * 12); g.stroke(); for (let x = (y % 2) * 12; x < T; x += 24) { g.beginPath(); g.moveTo(x, y * 12); g.lineTo(x, y * 12 + 12); g.stroke(); } } break;
-      case QCOIN: case QMUSH: case QSTAR: box('#f8b820', '#8a5a00'); g.fillStyle = '#fff'; g.font = '800 34px Arial'; g.textAlign = 'center'; g.fillText('?', T / 2, 36); g.fillStyle = '#8a5a00'; [[5, 5], [T - 9, 5], [5, T - 9], [T - 9, T - 9]].forEach(([x, y]) => g.fillRect(x, y, 4, 4)); break;
-      case USED: box('#a0703a', '#5a3a1a'); break;
-      case SOLID: box('#b07a4a', '#6a4422'); g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(4, 4, T - 8, 6); break;
-      case PLAT: g.fillStyle = '#7bd36b'; g.fillRect(0, 0, T, T); g.fillStyle = '#e9f7e6'; g.fillRect(0, 14, T, T - 14); g.fillStyle = '#5ab84a'; g.fillRect(0, 10, T, 6); break;
-      case PIPE_TL: case PIPE_TR: g.fillStyle = '#2fbf4a'; g.fillRect(0, 0, T, T); g.fillStyle = '#1a8a30'; g.fillRect(0, 0, T, 4); g.fillRect(0, T - 4, T, 4); g.fillStyle = 'rgba(255,255,255,.35)'; if (t === PIPE_TL) g.fillRect(8, 4, 8, T - 8); break;
-      case PIPE_L: case PIPE_R: g.fillStyle = '#2fbf4a'; g.fillRect(t === PIPE_L ? 4 : 0, 0, T - 4, T); g.fillStyle = 'rgba(255,255,255,.35)'; if (t === PIPE_L) g.fillRect(12, 0, 8, T); g.fillStyle = '#1a8a30'; g.fillRect(t === PIPE_L ? 4 : T - 4, 0, 4, T); break;
+      case GROUND: {
+        const gr = g.createLinearGradient(0, 0, 0, T); gr.addColorStop(0, theme.ground); gr.addColorStop(1, shadeHex(theme.ground, 0.8));
+        g.fillStyle = gr; g.fillRect(0, 0, T, T);
+        for (let i = 0; i < 9; i++) { g.fillStyle = i % 2 ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.1)'; g.beginPath(); g.ellipse((i * 17) % T, (i * 23) % T, 4 + (i % 3) * 2, 3, 0, 0, 7); g.fill(); }
+        break;
+      }
+      case BRICK: {
+        g.fillStyle = shadeHex(theme.brick, 0.55); g.fillRect(0, 0, T, T);
+        for (let y = 0; y < 4; y++) for (let x = -1; x < 3; x++) {
+          const bx = x * 24 + (y % 2) * 12 + 1.5, by = y * 12 + 1.5;
+          const gr = g.createLinearGradient(0, by, 0, by + 9); gr.addColorStop(0, shadeHex(theme.brick, 1.25)); gr.addColorStop(1, theme.brick);
+          g.fillStyle = gr; g.beginPath(); g.roundRect(bx, by, 21, 9, 2); g.fill();
+        }
+        break;
+      }
+      case QCOIN: case QMUSH: case QSTAR: {
+        bevel('#f8b820', '#ffe08a', '#a86a00', 7);
+        const gr = g.createLinearGradient(0, 0, T, T); gr.addColorStop(0, 'rgba(255,255,255,.35)'); gr.addColorStop(0.5, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(4, 4, T - 8, T - 8);
+        g.font = '900 32px Arial'; g.textAlign = 'center'; g.fillStyle = '#a86a00'; g.fillText('?', T / 2 + 2, 37); g.fillStyle = '#fff'; g.fillText('?', T / 2, 35);
+        g.fillStyle = '#a86a00'; [[8, 8], [T - 10, 8], [8, T - 10], [T - 10, T - 10]].forEach(([x, y]) => { g.beginPath(); g.arc(x, y, 2, 0, 7); g.fill(); });
+        break;
+      }
+      case USED: bevel('#a0703a', '#c79a62', '#5a3a1a', 7); break;
+      case SOLID: bevel('#b07a4a', '#e0ab78', '#6a4422', 5); g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(10, 22, 28, 4); break;
+      case PLAT: {
+        g.fillStyle = '#fff6ec'; g.fillRect(0, 12, T, T - 12);
+        g.fillStyle = 'rgba(0,0,0,.06)'; for (let i = 0; i < 3; i++) g.fillRect(8 + i * 14, 20, 4, T);
+        const gr = g.createLinearGradient(0, 0, 0, 16); gr.addColorStop(0, '#9ce87e'); gr.addColorStop(1, '#4fb33f');
+        g.fillStyle = gr; g.beginPath(); g.roundRect(0, 0, T, 16, 6); g.fill();
+        g.fillStyle = 'rgba(255,255,255,.5)'; g.fillRect(4, 3, T - 8, 3);
+        break;
+      }
+      case PIPE_TL: case PIPE_TR: case PIPE_L: case PIPE_R: {
+        const top = t === PIPE_TL || t === PIPE_TR, left = t === PIPE_TL || t === PIPE_L;
+        // cylinder shading across the 2-tile-wide pipe
+        const x0 = left ? 0 : -T, inset = top ? 0 : 5;
+        const gr = g.createLinearGradient(x0 + inset, 0, x0 + 2 * T - inset, 0);
+        gr.addColorStop(0, '#1a7a2c'); gr.addColorStop(0.25, '#7aec8a'); gr.addColorStop(0.45, '#3ccf55'); gr.addColorStop(1, '#14682a');
+        g.fillStyle = gr; g.fillRect(left ? inset : 0, 0, T - inset, T);
+        g.fillStyle = '#0f4f1f';
+        if (top) { g.fillRect(0, 0, T, 3); g.fillRect(0, T - 4, T, 4); if (left) g.fillRect(0, 0, 3, T); else g.fillRect(T - 3, 0, 3, T); }
+        else { if (left) g.fillRect(inset, 0, 3, T); else g.fillRect(T - inset - 3, 0, 3, T); }
+        break;
+      }
       default: break;
     }
     tileCache[t] = c;
     return c;
+  }
+  function shadeHex(hex, f) {
+    const n = parseInt(hex.slice(1), 16), k = (v) => Math.max(0, Math.min(255, Math.round(v * f)));
+    return `rgb(${k(n >> 16)},${k((n >> 8) & 255)},${k(n & 255)})`;
   }
 
   function drawBg() {
     const g = ctx.createLinearGradient(0, 0, 0, VH);
     g.addColorStop(0, theme.sky[0]); g.addColorStop(1, theme.sky[1]);
     ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
-    // parallax hills
-    for (const [layer, col, amp, base, par] of [[0, theme.hill2, 90, 520, 0.2], [1, theme.hill, 60, 590, 0.4]]) {
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.moveTo(0, VH);
-      for (let x = 0; x <= VW; x += 20) { const wx = x + camX * par; ctx.lineTo(x, base - Math.abs(Math.sin(wx / (260 + layer * 90))) * amp); }
-      ctx.lineTo(VW, VH); ctx.fill();
-    }
     if (L.theme !== 'cave') {
-      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      // sun with glow
+      const sx = 1040 - camX * 0.02, sy = 120;
+      const sg = ctx.createRadialGradient(sx, sy, 10, sx, sy, 160); sg.addColorStop(0, 'rgba(255,250,220,.95)'); sg.addColorStop(0.25, 'rgba(255,240,180,.5)'); sg.addColorStop(1, 'rgba(255,240,180,0)');
+      ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sx, sy, 160, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fffbe6'; ctx.beginPath(); ctx.arc(sx, sy, 42, 0, 7); ctx.fill();
+      // far mountains
+      ctx.fillStyle = L.theme === 'sky' ? 'rgba(255,220,200,.6)' : 'rgba(150,190,230,.7)';
+      ctx.beginPath(); ctx.moveTo(0, VH);
+      for (let x = -40; x <= VW + 40; x += 160) { const wx = x + ((camX * 0.08) % 160); const h = 200 + ((Math.floor((x + camX * 0.08) / 160) * 37) % 5) * 30; ctx.lineTo(wx - ((camX * 0.08) % 160) * 2 + 80, 470 - h); ctx.lineTo(wx - ((camX * 0.08) % 160) * 2 + 160, 470); }
+      ctx.lineTo(VW, VH); ctx.fill();
+      // clouds (soft, shaded)
       for (let i = 0; i < 8; i++) {
         const x = ((i * 380 - camX * 0.3) % (VW + 400) + VW + 400) % (VW + 400) - 200, y = 80 + (i * 53) % 180;
+        ctx.fillStyle = 'rgba(200,215,235,.9)';
+        ctx.beginPath(); ctx.arc(x + 4, y + 8, 30, 0, 7); ctx.arc(x + 39, y - 6, 38, 0, 7); ctx.arc(x + 79, y + 8, 28, 0, 7); ctx.fill();
+        ctx.fillStyle = '#fff';
         ctx.beginPath(); ctx.arc(x, y, 30, 0, 7); ctx.arc(x + 35, y - 14, 38, 0, 7); ctx.arc(x + 75, y, 28, 0, 7); ctx.fill();
       }
     } else {
-      ctx.fillStyle = 'rgba(255,255,255,.4)';
-      for (let i = 0; i < 40; i++) { const x = ((i * 137 - camX * 0.1) % VW + VW) % VW; ctx.fillRect(x, (i * 71) % 400, 2, 2); }
+      for (let i = 0; i < 60; i++) { const x = ((i * 137 - camX * 0.1) % VW + VW) % VW, tw = 0.3 + 0.7 * Math.abs(Math.sin(clock * 2 + i)); ctx.fillStyle = `rgba(180,200,255,${tw * 0.6})`; ctx.fillRect(x, (i * 71) % 420, 2, 2); }
+      // stalactites
+      ctx.fillStyle = '#1a1c38';
+      for (let i = 0; i < 14; i++) { const x = ((i * 113 - camX * 0.3) % (VW + 120) + VW + 120) % (VW + 120) - 60; ctx.beginPath(); ctx.moveTo(x - 30, 0); ctx.lineTo(x, 60 + (i * 29) % 80); ctx.lineTo(x + 30, 0); ctx.fill(); }
+    }
+    // parallax hills with highlights
+    for (const [layer, col, amp, base, par] of [[0, theme.hill2, 90, 520, 0.2], [1, theme.hill, 60, 590, 0.4]]) {
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.moveTo(0, VH);
+      for (let x = 0; x <= VW; x += 16) { const wx = x + camX * par; ctx.lineTo(x, base - Math.abs(Math.sin(wx / (260 + layer * 90))) * amp); }
+      ctx.lineTo(VW, VH); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 4; ctx.beginPath();
+      for (let x = 0; x <= VW; x += 16) { const wx = x + camX * par; const yy = base - Math.abs(Math.sin(wx / (260 + layer * 90))) * amp + 4; x ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy); }
+      ctx.stroke();
+    }
+    // bushes in front
+    if (L.theme === 'day') {
+      for (let i = 0; i < 10; i++) {
+        const x = ((i * 290 - camX * 0.7) % (VW + 300) + VW + 300) % (VW + 300) - 150;
+        ctx.fillStyle = '#2e9e3e'; ctx.beginPath(); ctx.arc(x, 630, 34, Math.PI, 0); ctx.arc(x + 40, 630, 44, Math.PI, 0); ctx.arc(x + 82, 630, 30, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(x + 30, 605, 10, 0, 7); ctx.fill();
+      }
     }
   }
 
@@ -442,17 +610,41 @@ export function create(api) {
       if (t === E) continue;
       if (t === COIN) {
         const sx = Math.abs(Math.cos(clock * 4 + c * 0.3));
-        ctx.fillStyle = '#ffd23a'; ctx.strokeStyle = '#b07a00'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.ellipse(c * T + T / 2, r * T + T / 2, 14 * sx + 2, 18, 0, 0, 7); ctx.fill(); ctx.stroke();
+        const ccx = c * T + T / 2, ccy = r * T + T / 2;
+        const cg = ctx.createLinearGradient(ccx - 14, ccy - 18, ccx + 14, ccy + 18); cg.addColorStop(0, '#fff3a0'); cg.addColorStop(0.5, '#ffd23a'); cg.addColorStop(1, '#d99a00');
+        ctx.fillStyle = cg; ctx.strokeStyle = '#9a6a00'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(ccx, ccy, 14 * sx + 2, 18, 0, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.fillRect(ccx - 2 * sx, ccy - 10, 3 * sx + 1, 20);
         continue;
       }
       const pop = pops.find((p) => p.c === c && p.r === r);
       const oy = pop ? -Math.sin((pop.t / 0.15) * Math.PI) * 12 : 0;
       ctx.drawImage(tileSprite(t), c * T, r * T + oy);
-      if (t === GROUND && (r === 0 || grid[r - 1][c] !== GROUND) && L.theme !== 'cave') { ctx.fillStyle = theme.grass; ctx.fillRect(c * T, r * T, T, 10); }
+      if (t === GROUND && (r === 0 || grid[r - 1][c] !== GROUND) && L.theme !== 'cave') {
+        ctx.fillStyle = theme.grass; ctx.fillRect(c * T, r * T, T, 11);
+        ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(c * T, r * T + 2, T, 3);
+        ctx.fillStyle = theme.grass; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(c * T + k * 12 + 2, r * T + 10); ctx.lineTo(c * T + k * 12 + 6, r * T + 16); ctx.lineTo(c * T + k * 12 + 10, r * T + 10); ctx.fill(); }
+      }
     }
     // flag
-    const fx = L.flag * T + 20, groundY = (ROWS - 2) * T;
+    const groundY = (ROWS - 2) * T;
+    // pipe hints
+    for (const w of L.warps) {
+      const top = grid.findIndex((row) => row[w.x] === PIPE_TL);
+      if (top < 0) continue;
+      const near = plist.some((pl) => !pl.dead && Math.abs(pl.x + pl.w / 2 - (w.x + 1) * T) < 3 * T);
+      if (near) bigText(ctx, '▼', (w.x + 1) * T, top * T - 70 + Math.sin(clock * 6) * 6, 30, '#fff', '#1a8a30');
+    }
+    if (L.secret) {
+      const sx = L.secret.x * T + 20, sTop = L.secret.top * T;
+      ctx.fillStyle = '#ddd'; ctx.fillRect(sx, sTop, 8, groundY - sTop);
+      ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.arc(sx + 4, sTop, 12, 0, 7); ctx.fill();
+      const sy = state === 'clear' && secretClear ? sTop + 20 + (1 - Math.max(0, stateT - 2) / 2) * (groundY - sTop - 80) : sTop + 20;
+      ctx.fillStyle = '#ff3b4a'; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - 60, sy + 25 + Math.sin(clock * 5) * 4); ctx.lineTo(sx, sy + 50); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '900 20px Arial'; ctx.fillText('★', sx - 24, sy + 33);
+    }
+    if (L.flag < L.width) {
+    const fx = L.flag * T + 20;
     ctx.fillStyle = '#ddd'; ctx.fillRect(fx, groundY - 9 * T, 8, 9 * T);
     ctx.fillStyle = '#3cd16b'; ctx.beginPath(); ctx.arc(fx + 4, groundY - 9 * T, 12, 0, 7); ctx.fill();
     const flagY = state === 'clear' ? groundY - 9 * T + 20 + (1 - Math.max(0, stateT - 2) / 2) * (8 * T - 40) : groundY - 9 * T + 20;
@@ -465,21 +657,27 @@ export function create(api) {
     for (let i = 0; i < 5; i++) ctx.fillRect(cx + i * T + 6, groundY - 4 * T - 16, 30, 16);
     ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(cx + 2.5 * T, groundY - T, 30, Math.PI, 0); ctx.fillRect(cx + 2.5 * T - 30, groundY - T, 60, T); ctx.fill();
 
+    }
     for (const it of items) drawItem(it);
     for (const e of enemies) drawEnemy(e);
     for (const pl of plist) drawPl(pl);
     for (const pa of parts) {
       if (pa.kind === 'coin') { ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.ellipse(pa.x, pa.y, 10, 16, 0, 0, 7); ctx.fill(); }
+      else if (pa.kind === 'dust') { ctx.fillStyle = `rgba(255,255,255,${pa.t * 1.6})`; ctx.beginPath(); ctx.arc(pa.x, pa.y, 6 + (0.4 - pa.t) * 20, 0, 7); ctx.fill(); }
       else { ctx.fillStyle = theme.brick; ctx.fillRect(pa.x - 10, pa.y - 10, 20, 20); }
     }
     ctx.restore();
+    const vg = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.45, VW / 2, VH / 2, VH * 1.0);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.28)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, VW, VH);
     drawHud();
     if (state === 'intro') {
       ctx.fillStyle = 'rgba(0,0,0,.75)'; ctx.fillRect(0, 0, VW, VH);
       bigText(ctx, L.name, VW / 2, VH / 2 - 40, 80, '#fff', '#000');
       bigText(ctx, `× ${lives}`, VW / 2, VH / 2 + 60, 50, '#ffd23a', '#000');
     }
-    if (state === 'clear') bigText(ctx, 'COURSE CLEAR!', VW / 2, VH / 2 - 80, 90, '#ffd23a', '#7a3d00');
+    if (state === 'clear') bigText(ctx, secretClear ? '★ SECRET EXIT! ★' : 'COURSE CLEAR!', VW / 2, VH / 2 - 80, 90, secretClear ? '#ff6b9a' : '#ffd23a', '#7a3d00');
+    if (state === 'warp') { ctx.fillStyle = `rgba(0,0,0,${1 - stateT / 0.8})`; ctx.fillRect(0, 0, VW, VH); }
     view.end();
   }
   function drawPl(pl) {
@@ -499,28 +697,36 @@ export function create(api) {
     ctx.save();
     const cx = e.x + e.w / 2, by = e.y + e.h;
     if (e.dead && !e.flat) { ctx.translate(cx, by - 20); ctx.scale(1, -1); ctx.translate(-cx, -(by - 20)); }
+    ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(30,15,5,.8)'; ctx.lineJoin = 'round';
     if (e.type === 'g') {
       const sq = e.flat ? 0.35 : 1;
-      ctx.fillStyle = '#8a4a1a';
-      ctx.beginPath(); ctx.ellipse(cx, by - 22 * sq, 24, 22 * sq, 0, Math.PI, 0); ctx.lineTo(cx + 18, by - 6 * sq); ctx.lineTo(cx - 18, by - 6 * sq); ctx.fill();
-      ctx.fillStyle = '#f2d2a2'; ctx.fillRect(cx - 12, by - 12 * sq, 24, 8 * sq);
       const step = Math.sin(clock * 12 + e.x) * 5;
-      ctx.fillStyle = '#2a1608'; ctx.fillRect(cx - 18 + step, by - 6, 14, 6); ctx.fillRect(cx + 4 - step, by - 6, 14, 6);
+      ctx.fillStyle = '#2a1608';
+      ctx.beginPath(); ctx.ellipse(cx - 10 + step, by - 4, 9, 5, 0, 0, 7); ctx.ellipse(cx + 10 - step, by - 4, 9, 5, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#f2d2a2'; ctx.beginPath(); ctx.roundRect(cx - 12, by - 14 * sq, 24, 10 * sq, 4); ctx.fill(); ctx.stroke();
+      const hg = ctx.createRadialGradient(cx - 6, by - 30 * sq, 2, cx, by - 20 * sq, 30); hg.addColorStop(0, '#c0703a'); hg.addColorStop(1, '#6a3410');
+      ctx.fillStyle = hg;
+      ctx.beginPath(); ctx.moveTo(cx - 24, by - 10 * sq); ctx.quadraticCurveTo(cx - 26, by - 40 * sq, cx, by - 42 * sq); ctx.quadraticCurveTo(cx + 26, by - 40 * sq, cx + 24, by - 10 * sq); ctx.closePath(); ctx.fill(); ctx.stroke();
       if (!e.flat) {
-        ctx.fillStyle = '#fff'; ctx.fillRect(cx - 12, by - 30, 9, 11); ctx.fillRect(cx + 3, by - 30, 9, 11);
-        ctx.fillStyle = '#000'; ctx.fillRect(cx - 9, by - 27, 5, 7); ctx.fillRect(cx + 5, by - 27, 5, 7);
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - 14, by - 35); ctx.lineTo(cx - 3, by - 31); ctx.moveTo(cx + 14, by - 35); ctx.lineTo(cx + 3, by - 31); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(cx - 7, by - 26, 5, 7, 0, 0, 7); ctx.ellipse(cx + 7, by - 26, 5, 7, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(cx - 6, by - 24, 3, 0, 7); ctx.arc(cx + 6, by - 24, 3, 0, 7); ctx.fill();
+        ctx.strokeStyle = '#111'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(cx - 14, by - 36); ctx.lineTo(cx - 3, by - 31); ctx.moveTo(cx + 14, by - 36); ctx.lineTo(cx + 3, by - 31); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(cx - 9, by - 15); ctx.lineTo(cx - 6, by - 19); ctx.lineTo(cx - 3, by - 15); ctx.moveTo(cx + 3, by - 15); ctx.lineTo(cx + 6, by - 19); ctx.lineTo(cx + 9, by - 15); ctx.fill();
       }
     } else {
-      const dir = e.vx > 0 ? 1 : -1;
-      ctx.fillStyle = '#2ecc40'; ctx.strokeStyle = '#147a24'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.ellipse(cx, by - 16, 20, 16, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff3c4'; ctx.fillRect(cx - 18, by - 8, 36, 6);
+      const dir = e.vx > 0 ? 1 : e.vx < 0 ? -1 : 1;
       if (!e.shell) {
-        ctx.fillStyle = '#ffd36b'; ctx.beginPath(); ctx.arc(cx + dir * 20, by - 34, 11, 0, 7); ctx.fill();
-        ctx.fillStyle = '#000'; ctx.fillRect(cx + dir * 23 - 2, by - 38, 4, 6);
-        ctx.fillStyle = '#ffd36b'; ctx.fillRect(cx - 12, by - 4, 8, 4); ctx.fillRect(cx + 4, by - 4, 8, 4);
+        ctx.fillStyle = '#ffd36b';
+        ctx.beginPath(); ctx.ellipse(cx - 8, by - 3, 6, 4, 0, 0, 7); ctx.ellipse(cx + 8, by - 3, 6, 4, 0, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(cx + dir * 19, by - 30, 10, 12, 0, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(cx + dir * 22, by - 34, 4, 5.5, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(cx + dir * 23.5, by - 33, 2.2, 0, 7); ctx.fill();
       }
+      const sg = ctx.createRadialGradient(cx - 6, by - 24, 2, cx, by - 14, 24); sg.addColorStop(0, '#7af08a'); sg.addColorStop(1, '#1e9a34');
+      ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(cx, by - 14, 21, 17, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(10,70,20,.7)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx - 10, by - 14); ctx.lineTo(cx - 6, by - 26); ctx.lineTo(cx + 6, by - 26); ctx.lineTo(cx + 10, by - 14); ctx.stroke();
+      ctx.fillStyle = '#fff3c4'; ctx.strokeStyle = 'rgba(30,15,5,.8)'; ctx.beginPath(); ctx.roundRect(cx - 20, by - 11, 40, 6, 3); ctx.fill(); ctx.stroke();
     }
     ctx.restore();
   }
@@ -587,7 +793,7 @@ export function create(api) {
     state = 'gameover';
     const rows = [...plist].sort((a, b) => b.score - a.score);
     api.audio.play('cheer');
-    ui = overlay(api, `<h1>🏰 You saved… someone!</h1><p>The princess is in another castle. Probably. We ran out of budget.</p>
+    ui = overlay(api, `<h1>🏰 You saved… someone!</h1>${secretsFound ? '<h2>★ Secret exits found: ' + secretsFound + '</h2>' : '<p>Psst… there might be a secret exit somewhere underground.</p>'}<p>The princess is in another castle. Probably. We ran out of budget.</p>
       <table class="score"><tr><th>Player</th><th>Score</th><th>Coins</th></tr>${rows.map((pl) => `<tr><td style="color:${pl.p.color};font-weight:800">P${pl.p.index + 1} ${api.getMe(pl.p.index).name}</td><td>${pl.score}</td><td>${pl.coins}</td></tr>`).join('')}</table>
       <div class="g-row"><div class="pill" data-ui="retry">Play Again</div><div class="pill" data-ui="quit">Woo Menu</div></div>`, {
       retry: () => { ui.remove(); ui = null; plist = []; lives = 5; startLevel(0); },
@@ -595,6 +801,9 @@ export function create(api) {
     });
   }
 
+  if (new URLSearchParams(location.search).has('debug')) {
+    window.__bros = { start: (i) => { plist = []; startLevel(i); }, tp: (x, y) => { camX = Math.max(0, Math.min(L.width * T - VW, x * T - VW * 0.4)); for (const pl of plist) { pl.x = x * T; pl.y = y * T; pl.vy = 0; } }, get state() { return state; }, get level() { return L && L.name; } };
+  }
   title();
   return { update, resize: view.resize, destroy() {} };
 }

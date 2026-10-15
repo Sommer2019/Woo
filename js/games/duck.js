@@ -1,5 +1,5 @@
 // Woo Play: Duck Blaster — point & shoot gallery for up to 4 at once. Aim with the pointer, B or A to fire.
-import { makeCanvas, overlay, bigText, resultsOverlay } from './common.js';
+import { makeCanvas, overlay, bigText, resultsOverlay, vignette } from './common.js';
 import { drawDuck } from '../channels.js';
 
 const W = 1280, H = 720;
@@ -113,6 +113,9 @@ export function create(api) {
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#5fb4ff'); g.addColorStop(1, '#d3eeff');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const sg = ctx.createRadialGradient(1050, 110, 10, 1050, 110, 180); sg.addColorStop(0, 'rgba(255,250,220,.95)'); sg.addColorStop(0.2, 'rgba(255,240,180,.45)'); sg.addColorStop(1, 'rgba(255,240,180,0)');
+    ctx.fillStyle = sg; ctx.fillRect(850, 0, 400, 320);
+    ctx.fillStyle = 'rgba(150,190,230,.55)'; ctx.beginPath(); ctx.moveTo(0, 520); for (let x = 0; x <= W; x += 120) ctx.lineTo(x + 60, 400 + ((x * 7) % 5) * 18); ctx.lineTo(W, 520); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.85)';
     for (let i = 0; i < 5; i++) { const x = ((i * 300 + clock * 15) % (W + 200)) - 100; ctx.beginPath(); ctx.arc(x, 90 + i * 25, 30, 0, 7); ctx.arc(x + 40, 75 + i * 25, 40, 0, 7); ctx.arc(x + 80, 90 + i * 25, 28, 0, 7); ctx.fill(); }
     ctx.fillStyle = '#7fc96b'; ctx.beginPath(); ctx.moveTo(0, H); for (let x = 0; x <= W; x += 40) ctx.lineTo(x, 520 - Math.sin(x / 180) * 40); ctx.lineTo(W, H); ctx.fill();
@@ -130,6 +133,7 @@ export function create(api) {
       ctx.beginPath(); ctx.arc(c.x, c.y, 22, 0, 7); ctx.moveTo(c.x - 34, c.y); ctx.lineTo(c.x - 10, c.y); ctx.moveTo(c.x + 10, c.y); ctx.lineTo(c.x + 34, c.y); ctx.moveTo(c.x, c.y - 34); ctx.lineTo(c.x, c.y - 10); ctx.moveTo(c.x, c.y + 10); ctx.lineTo(c.x, c.y + 34); ctx.stroke();
       ctx.fillStyle = pl.p.color; ctx.font = '800 16px Arial'; ctx.textAlign = 'left'; ctx.fillText(pl.p.index + 1, c.x + 22, c.y - 20);
     }
+    vignette(ctx, W, H, 0.25);
     // HUD
     players.forEach((pl, i) => {
       ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(20 + i * 250, 16, 230, 50);
