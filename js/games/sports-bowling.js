@@ -241,7 +241,7 @@ export function create(env) {
   function throwBall(pw) {
     const p = ps[cur].p;
     power = Math.max(0.12, Math.min(1, pw));
-    spin = p.phone && p.hasMotion ? Math.max(-1, Math.min(1, p.steer)) : 0;
+    spin = p.phone && p.hasMotion ? -Math.max(-1, Math.min(1, p.steer)) : 0;
     const speed = 4 + power * 8;
     ball.x = pos; ball.z = 0.2; ball.y = BALL_R;
     ball.vx = Math.sin(aim) * speed; ball.vz = Math.cos(aim) * speed;
@@ -253,17 +253,18 @@ export function create(env) {
   function updateAim(dt) {
     const p = ps[cur].p, B = api.BTN;
     const posMax = LANE_W - BALL_R - 0.05;
-    if (p.down(B.A)) aim = Math.max(-0.12, Math.min(0.12, aim + p.dirX() * dt * 0.15));
-    else pos = Math.max(-posMax, Math.min(posMax, pos + p.dirX() * dt * (0.6 + LANE_W * 0.4)));
-    figure.position.set(pos - 0.25, 0, -0.9);
+    // the camera looks down +z, so screen-right is world -x
+    if (p.down(B.A)) aim = Math.max(-0.12, Math.min(0.12, aim - p.dirX() * dt * 0.15));
+    else pos = Math.max(-posMax, Math.min(posMax, pos - p.dirX() * dt * (0.6 + LANE_W * 0.4)));
+    figure.position.set(pos + 0.25, 0, -0.9);
     figure.rotation.y = aim;
-    const arm = figure.userData.arms[1];
+    const arm = figure.userData.arms[0];
     if (p.down(B.B)) {
       holdingB = true;
       arm.rotation.x = Math.sin(performance.now() / 300) * 0.2 - 0.3;
       swingPeak = Math.max(swingPeak, p.mag > 12 ? Math.min(1, (p.mag - 8) / 22) : 0);
     } else arm.rotation.x = -0.2;
-    ball.y = 0.55; ball.x = pos + 0.05; ball.z = -0.85;
+    ball.y = 0.55; ball.x = pos - 0.05; ball.z = -0.85;
     aimArrow.visible = true;
     aimArrow.position.set(pos + Math.sin(aim) * 3, 0.03, Math.cos(aim) * 3);
     aimArrow.rotation.z = -aim;
@@ -274,7 +275,7 @@ export function create(env) {
       if (swingPeak > 0) throwBall(swingPeak);
       holdingB = false;
     }
-    camPos.lerp(new THREE.Vector3(pos * 0.6 + 0.7, 2.1 + LANE_W * 0.4, -4.3 - LANE_W * 0.6), 0.1);
+    camPos.lerp(new THREE.Vector3(pos * 0.6 - 0.7, 2.1 + LANE_W * 0.4, -4.3 - LANE_W * 0.6), 0.1);
     camLook.lerp(new THREE.Vector3(pos * 0.3 + Math.sin(aim) * 6, 0.2, 10), 0.1);
   }
 
@@ -429,7 +430,7 @@ export function create(env) {
     for (const s of sparks) { s.t -= dt; s.vy -= 6 * dt; s.m.position.x += s.vx * dt; s.m.position.y += s.vy * dt; s.m.position.z += s.vz * dt; s.m.rotation.x += s.r * dt; s.m.rotation.y += s.r * dt; if (s.m.position.y < 0.01) { s.m.position.y = 0.01; s.vy = 0; s.vx *= 0.9; s.vz *= 0.9; } }
     for (const s of sparks) if (s.t <= 0) scene.remove(s.m);
     sparks = sparks.filter((s) => s.t > 0);
-    if (figure && (state === 'roll' || state === 'settle')) figure.userData.arms[1].rotation.x = Math.max(-1.6, figure.userData.arms[1].rotation.x - dt * 8);
+    if (figure && (state === 'roll' || state === 'settle')) figure.userData.arms[0].rotation.x = Math.max(-1.6, figure.userData.arms[0].rotation.x - dt * 8);
     render();
   }
 
@@ -516,8 +517,8 @@ export function create(env) {
   build();
   resetPins(true);
   setFigure();
-  figure.position.set(-0.25, 0, -0.9);
-  ballMesh.position.set(0.05, 0.55, -0.85);
+  figure.position.set(0.25, 0, -0.9);
+  ballMesh.position.set(-0.05, 0.55, -0.85);
   chooser();
 
   return {

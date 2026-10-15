@@ -22,6 +22,15 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # Pages caches files for 10 minutes; stamp every script/stylesheet URL with the
+      # commit so a browser never mixes an old main.js with a new index.html.
+      - name: Cache-bust asset URLs
+        run: |
+          V="${GITHUB_SHA::8}"
+          sed -i -E "s#(src|href)=\"([^\"]+\.(js|css))\"#\1=\"\2?v=$V\"#g" index.html remote/index.html
+          find js -name '*.js' -not -path 'js/lib/*' -print0 | xargs -0 sed -i -E "s#(['\"])(\.{1,2}/[^'\"]+\.js)(['\"])#\1\2?v=$V\3#g"
+          sed -i -E "s#(['\"])(\.\./js/[^'\"]+\.js)(['\"])#\1\2?v=$V\3#g" remote/remote.js
+          grep -o 'main.js?v=[a-z0-9]*' index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

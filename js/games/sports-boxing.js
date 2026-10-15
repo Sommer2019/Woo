@@ -111,8 +111,9 @@ export function create(env) {
     if (b.hitFlash > 0) b.hitFlash -= dt;
     const faceSign = b.i === 0 ? 1 : -1;
     const lean = b.dodgeT > 0 ? b.dodge * Math.sin((b.dodgeT / 0.45) * Math.PI) * 0.5 : 0;
-    b.fig.position.set(b.x + lean * 0.6 * faceSign, 0, b.z - (b.stun > 0 ? 0.15 * faceSign : 0));
-    b.fig.rotation.set(0, b.i === 0 ? 0 : Math.PI, -lean * 0.4);
+    // seen from behind, screen-right is world -x for boxer 0 and +x for boxer 1
+    b.fig.position.set(b.x - lean * 0.6 * faceSign, 0, b.z - (b.stun > 0 ? 0.15 * faceSign : 0));
+    b.fig.rotation.set(0, b.i === 0 ? 0 : Math.PI, lean * 0.4);
     const arms = b.fig.userData.arms;
     for (let h = 0; h < 2; h++) {
       const arm = arms[h];
