@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#e9edf1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Woo Remote</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='18' y='2' width='28' height='60' rx='12' fill='white' stroke='%2335b6ff' stroke-width='4'/%3E%3Ccircle cx='32' cy='26' r='6' fill='%2335b6ff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="remote.css">
+<script src="../js/lib/peerjs.min.js"></script>
+</head>
+<body>
+<!-- connect screen -->
+<section id="connect" class="screen">
+  <div class="card">
+    <div class="logo">woo <span>remote</span></div>
+    <label>Console code<input id="code" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
+    <button id="go" class="big">Connect</button>
+    <div id="status" class="status">Enter the code shown on the TV.</div>
+    <p class="fine">Tip: allow motion &amp; orientation access when asked — that's how pointing and swinging work. Keep this page open and the screen on while playing.</p>
+    <p class="fine">Woo is an unofficial, fan-made toy. Not affiliated with any console maker.</p>
+  </div>
+</section>
+
+<!-- the remote -->
+<section id="remote" class="screen hidden">
+  <div id="frame" class="frame">
+    <!-- portrait (pointer) layout -->
+    <div class="body portrait" id="body-portrait">
+      <div class="row top"><div class="btn power" data-btn="POWER" title="Disconnect">⏻</div><div class="pad-hint">drag here = pointer</div></div>
+      <div class="dpad">
+        <div class="btn d up" data-btn="UP"></div>
+        <div class="btn d left" data-btn="LEFT"></div>
+        <div class="d mid"></div>
+        <div class="btn d right" data-btn="RIGHT"></div>
+        <div class="btn d down" data-btn="DOWN"></div>
+      </div>
+      <div class="btn a" data-btn="A">A</div>
+      <div class="btn b" data-btn="B">B <small>trigger</small></div>
+      <div class="row trio">
+        <div class="btn sm" data-btn="MINUS">−</div>
+        <div class="btn home" data-btn="HOME">⌂</div>
+        <div class="btn sm" data-btn="PLUS">+</div>
+      </div>
+      <div class="speaker"></div>
+      <div class="btn num" data-btn="ONE">1</div>
+      <div class="btn num" data-btn="TWO">2</div>
+      <div class="leds"><i></i><i></i><i></i><i></i></div>
+      <div class="brand">woo</div>
+    </div>
+    <!-- sideways layout -->
+    <div class="body sideways hidden" id="body-sideways">
+      <div class="btn b-shoulder" data-btn="B">B</div>
+      <div class="dpad big">
+        <div class="btn d up" data-btn="UP"></div>
+        <div class="btn d left" data-btn="LEFT"></div>
+        <div class="d mid"></div>
+        <div class="btn d right" data-btn="RIGHT"></div>
+        <div class="btn d down" data-btn="DOWN"></div>
+      </div>
+      <div class="btn a small-a" data-btn="A">A</div>
+      <div class="col trio">
+        <div class="btn sm" data-btn="PLUS">+</div>
+        <div class="btn home" data-btn="HOME">⌂</div>
+        <div class="btn sm" data-btn="MINUS">−</div>
+      </div>
+      <div class="btn num big" data-btn="ONE">1</div>
+      <div class="btn num big" data-btn="TWO">2</div>
+      <div class="leds vertical"><i></i><i></i><i></i><i></i></div>
+    </div>
+  </div>
+  <div class="toolbar">
+    <span id="who">Player ?</span>
+    <button id="swing" class="tool hidden">〰 Swing</button>
+    <button id="gear" class="tool">⚙</button>
+  </div>
+  <div id="settings" class="drawer hidden">
+    <h3>Remote settings</h3>
+    <label><input type="checkbox" id="opt-gyro" checked> Point with motion (gyro)</label>
+    <label><input type="checkbox" id="opt-tilt" checked> Tilt to steer when sideways</label>
+    <label><input type="checkbox" id="opt-flip"> Flip motion axes (if steering is reversed)</label>
+    <label><input type="checkbox" id="opt-haptic" checked> Vibration</label>
+    <label>Pointer speed <input type="range" id="opt-sens" min="0.3" max="2.5" step="0.1" value="1"></label>
+    <div class="sensors" id="sensors">sensors: —</div>
+    <button id="close-settings" class="big">Done</button>
+  </div>
+  <div id="lost" class="lost hidden"><div>Connection lost…<br><button id="retry" class="big">Reconnect</button></div></div>
+</section>
+<script src="remote.js"></script>
+</body>
+</html>
