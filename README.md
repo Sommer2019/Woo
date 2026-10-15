@@ -70,8 +70,9 @@ remote/             the phone remote
 
 ## Hosting on GitHub Pages
 
-Repository **Settings → Pages → Build and deployment → Source: Deploy from a branch**, branch `main`,
-folder `/ (root)`. That's it — there is no build step. To run locally, serve the folder with any static
-server (e.g. `npx http-server .`) and open it; phones need HTTPS for motion sensors, so use the Pages URL for real play.
+Repository **Settings → Pages → Build and deployment → Source: GitHub Actions**. The workflow in
+`.github/workflows/pages.yml` then deploys every push to `main` (and can be started by hand under
+**Actions → Deploy to GitHub Pages → Run workflow**). There is no build step. To run locally, serve the folder
+with any static server (e.g. `npx http-server .`); phones need HTTPS for motion sensors, so use the Pages URL for real play.
 
 Dev shortcuts: `?skip=1` jumps past the warning screen, `?game=kart` (or `bros`, `sports`, `duck`, `fish`, `tanks`, `me`) boots straight into a game.
