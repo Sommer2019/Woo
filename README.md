@@ -47,6 +47,10 @@ arrows/WASD = D-pad, Z = 1, X = 2, Space = swing, Enter = A, H/Esc = HOME.
 - Phones talk to the TV over **WebRTC** using the free [PeerJS](https://peerjs.com) cloud broker for the
   handshake, so it works from a static GitHub Pages site. If the TV and the remote are tabs in the same
   browser they use a `BroadcastChannel` instead (great for testing).
+- If a direct WebRTC connection can't be made within ~5 s (typical when the phone is on mobile data and
+  the TV on Wi-Fi), the remote falls back to a **relay over public MQTT brokers** (HiveMQ, EMQX,
+  Mosquitto — `js/lib/mqtt-lite.js`). Only button/motion input and console messages go through it, on a
+  topic named after the console code; anyone who knows the code could read or send them, so don't treat it as private.
 - 3D games use [three.js](https://threejs.org); 2D games use canvas. QR codes via
   [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator). All three are MIT-licensed and vendored in `js/lib/`.
 - Sound effects and music are synthesized live with WebAudio (original tunes).
