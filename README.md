@@ -15,7 +15,7 @@ original knock-off written from scratch in plain JavaScript.
 |---|---|---|
 | **Disc Channel** | "Reads a disc" and boots a random game | — |
 | **Woo Me Channel** | Build an avatar ("Me") per player: face shape, hair, brows, eyes, nose, mouth, beards, glasses, hats, outfit, height & build, with a 3D preview. Mes drive karts and play sports | Pointer |
-| **Woo Kart** | Split-screen kart racer, 3 tracks, items, drifting, CPU racers | Sideways: **2** gas, **1** brake, **tilt**/D-pad steer, **B** drift, **D-pad ↑/A** item |
+| **Woo Kart** | Split-screen kart racer, 4 tracks (incl. the rail-less space track **Rainbow Run**), items, drifting, CPU racers | Sideways: **2** gas, **1** brake, **tilt**/D-pad steer, **B** drift, **D-pad ↑/A** item |
 | **Super Woo Bros.** | 4-player co-op platformer, 3 worlds + a secret one, warp pipes (stand on a pipe and press ↓), bonus rooms, a hidden red-flag secret exit | Sideways: D-pad move, **2** jump, **1** run, **shake** twirl |
 | **Woo Sports** | Bowling (classic or **100-pin**), Tennis, Boxing | Pointer, **swing** your phone |
 | **Woo Play: Duck Blaster** | Shooting gallery for everyone at once | Pointer, **B/A** fire |
