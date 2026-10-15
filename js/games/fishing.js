@@ -1,5 +1,5 @@
 // Woo Fishing — point your lure into the pond, keep still, and yank the remote UP (or press B) when a fish bites.
-import { makeCanvas, overlay, bigText, resultsOverlay } from './common.js';
+import { makeCanvas, overlay, bigText, resultsOverlay, vignette } from './common.js';
 
 const W = 1280, H = 720;
 const POND = { x: W / 2, y: H / 2 + 20, rx: 560, ry: 290 };
@@ -145,6 +145,10 @@ export function create(api) {
     ctx.save(); ctx.beginPath(); ctx.ellipse(POND.x, POND.y, POND.rx, POND.ry, 0, 0, 7); ctx.clip();
     ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 3;
     for (let i = 0; i < 9; i++) { const y = POND.y - POND.ry + i * 70 + Math.sin(clock + i) * 6; ctx.beginPath(); ctx.moveTo(POND.x - POND.rx, y); ctx.bezierCurveTo(POND.x - 200, y - 15, POND.x + 200, y + 15, POND.x + POND.rx, y); ctx.stroke(); }
+    // caustics shimmer
+    ctx.globalAlpha = 0.12; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    for (let i = 0; i < 26; i++) { const cx = POND.x + Math.cos(i * 2.4) * POND.rx * 0.8, cy = POND.y + Math.sin(i * 1.7) * POND.ry * 0.8; ctx.beginPath(); ctx.ellipse(cx + Math.sin(clock + i) * 12, cy, 40 + Math.sin(clock * 1.3 + i) * 12, 14, i, 0, 7); ctx.stroke(); }
+    ctx.globalAlpha = 1;
     for (const f of fish) drawFish(f.x, f.y, f.a, f.type, f.type.pts >= 150 ? 0.7 : 0.4);
     // lily pads
     ctx.fillStyle = '#3d9a4a';
@@ -171,6 +175,7 @@ export function create(api) {
       }
     }
     for (const p of pops) bigText(ctx, p.text, p.x, p.y, 30, '#fff', p.color);
+    vignette(ctx, W, H, 0.3);
     anglers.forEach((an, i) => {
       ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.fillRect(20 + i * 250, 16, 230, 50);
       ctx.fillStyle = an.p.color; ctx.font = '800 26px Arial'; ctx.textAlign = 'left';

@@ -14,6 +14,9 @@ export function create(api) {
   renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   renderer.domElement.className = 'g-full';
   root.appendChild(renderer.domElement);
   const hud = document.createElement('canvas');

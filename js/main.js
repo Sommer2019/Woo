@@ -29,6 +29,7 @@ const host = new Host({
   onMessage: (link, d) => {
     if (!d || typeof d !== 'object') return;
     if (d.t === 'hello') return join(link, d);
+    if (d.t === 'txt') { window.dispatchEvent(new CustomEvent('woo-text', { detail: { text: String(d.v || '').slice(0, 12), link } })); return; }
     const p = players.find((pl) => pl.link === link);
     if (!p) { host.send(link, { t: 'who' }); return; }
     if (d.t === 'bye') { leave(link); return; }
@@ -236,6 +237,8 @@ function makeApi(ch) {
       startGame(next);
     },
     clicker: () => app.lastClicker,
+    // ask a player's phone to show a text box (answer arrives as a 'woo-text' window event)
+    askText: (playerIndex, prompt, value) => { const p = players[playerIndex]; if (p && p.link) host.send(p.link, { t: 'ask', prompt, v: value }); },
     homebrewChanged: () => { applyCheats(); buildGrid(); },
   };
 }
