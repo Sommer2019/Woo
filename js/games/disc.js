@@ -1,8 +1,9 @@
 // Disc Channel: "reads" an imaginary disc and boots a random game.
 import { overlay } from './common.js';
+import { shop } from '../shopdata.js';
 
 export function create(api) {
-  const games = api.channels.filter((c) => !['disc', 'me', 'homebrew'].includes(c.id));
+  const games = api.channels.filter((c) => !['disc', 'me', 'homebrew', 'shop', 'browser', 'weather'].includes(c.id) && (!c.shop || shop.installed.includes(c.id)));
   const pick = games[Math.floor(Math.random() * games.length)];
   const el = overlay(api, `
     <h1>Reading disc…</h1>

@@ -47,6 +47,12 @@ const TRACKS = {
     bass: 'C3 . . . G2 . . . | F2 . . . G2 . . . | A2 . . . E2 . . . | F2 . . . G2 . . .',
     drums: 'h . . . h . . . ',
   },
+  shop: {
+    bpm: 112, wave: 'triangle', bassWave: 'sine', leadVol: 0.15, bassVol: 0.2,
+    lead: 'A4 . C5 E5 . D5 C5 . | B4 . D5 . G5 . . . | A4 . C5 E5 . G5 F5 E5 | D5 . . . B4 . . . | C5 . E5 G5 . F5 E5 . | D5 . F5 . A5 . G5 . | E5 . C5 . D5 . B4 . | C5 . . . . . . .',
+    bass: 'F2 . C3 . F2 . C3 . | G2 . D3 . G2 . D3 . | E2 . B2 . A2 . E3 . | D3 . A2 . G2 . . . | C3 . G2 . C3 . G2 . | D3 . A2 . D3 . F3 . | G2 . D3 . G2 . F2 . | C3 . G2 . C3 . . .',
+    drums: 'k . h h s . h . | k . h . s . h h',
+  },
   win: {
     bpm: 150, wave: 'square', bassWave: 'triangle', leadVol: 0.1, bassVol: 0.2, once: true,
     lead: 'C5 E5 G5 C6 . G5 C6 . | E6 . . . . . . .',
