@@ -4,6 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Woo Console</title>
+<script>
+  // Phones (small touch screens) are remotes, not TVs: send them straight to the remote page.
+  // ?tv=1 (remembered for this tab) forces the TV view anyway.
+  (function () {
+    var q = new URLSearchParams(location.search);
+    try { if (q.get('tv') === '1') sessionStorage.setItem('woo-force-tv', '1'); if (q.get('tv') === '0') sessionStorage.removeItem('woo-force-tv'); } catch (e) {}
+    var forced = false; try { forced = sessionStorage.getItem('woo-force-tv') === '1'; } catch (e) {}
+    var touch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+    var shortSide = Math.min(screen.width, screen.height);
+    if (!forced && touch && shortSide < 600) {
+      var c = q.get('c');
+      location.replace('remote/' + (c ? '?c=' + encodeURIComponent(c) : ''));
+    }
+  })();
+</script>
 <meta name="description" content="Woo — a trashy, totally unofficial home console that runs in your browser. Use your phone as the remote.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='14' fill='%2335b6ff'/%3E%3Ctext x='32' y='43' font-size='26' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3Ewoo%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
