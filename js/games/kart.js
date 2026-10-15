@@ -18,6 +18,12 @@ const TRACKS = [
     name: 'Frosty Loop', ground: '#eef4fa', ground2: '#dfe9f3', sky: 0xbfd8f0, fog: 0xe6f0fa, deco: 'pine',
     pts: [[0, 0], [150, 0], [220, 60], [200, 140], [120, 150], [90, 200], [140, 260], [80, 320], [-40, 310], [-100, 240], [-80, 160], [-140, 100], [-100, 20]],
   },
+  {
+    // floating rainbow ribbon in space: no rails, hills, dash pads — fall off and you get fished back
+    name: 'Rainbow Run', ground: '#000000', ground2: '#000000', sky: 0x0a0420, fog: 0x1a0a40, deco: 'space', space: true,
+    pts: [[0, 0, 0], [100, 0, 4], [170, 40, 12], [190, 120, 20], [140, 170, 24], [80, 150, 18], [30, 190, 10], [60, 260, 6], [140, 280, 14], [200, 330, 22], [150, 390, 26], [50, 380, 20], [-40, 330, 12], [-80, 250, 6], [-50, 170, 2], [-110, 110, 8], [-90, 30, 4]],
+    pads: [0.1, 0.33, 0.58, 0.86],
+  },
 ];
 const N = 700;          // track samples
 const W = 9;            // road half width
@@ -43,7 +49,7 @@ function canvasTex(w, h, fn, repeat = true) {
 export function create(api) {
   const root = api.root;
   let renderer, scene, hud, hctx;
-  let track = null, karts = [], items = [], boxes = [];
+  let track = null, karts = [], items = [], boxes = [], pads = [];
   let state = 'setup'; // setup | countdown | race | done
   let countdown = 0, raceTime = 0, doneTimer = 0;
   let trackIndex = 0;
@@ -75,7 +81,7 @@ export function create(api) {
   function buildTrack(def) {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(def.sky);
-    scene.fog = new THREE.Fog(def.fog, 90, 420);
+    scene.fog = new THREE.Fog(def.fog, def.space ? 160 : 90, def.space ? 700 : 420);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x667755, 1.5));
     const sun = new THREE.DirectionalLight(0xfff2dd, 2.4);
     sun.position.set(60, 120, 40);
@@ -88,14 +94,15 @@ export function create(api) {
     addSky(def);
 
     const scale = 1.25;
-    const curve = new THREE.CatmullRomCurve3(def.pts.map(([x, z]) => new THREE.Vector3(x * scale, 0, z * scale)), true, 'centripetal');
+    const curve = new THREE.CatmullRomCurve3(def.pts.map(([x, z, h = 0]) => new THREE.Vector3(x * scale, h, z * scale)), true, 'centripetal');
     const P = curve.getSpacedPoints(N).slice(0, N);
     const T = [], Nr = [];
     for (let i = 0; i < N; i++) {
       const a = P[(i - 1 + N) % N], b = P[(i + 1) % N];
       const t = new THREE.Vector3().subVectors(b, a).normalize();
       T.push(t);
-      Nr.push(new THREE.Vector3(-t.z, 0, t.x)); // left-hand normal -> we call it "right" consistently below
+      const th = new THREE.Vector3(t.x, 0, t.z).normalize();
+      Nr.push(new THREE.Vector3(-th.z, 0, th.x)); // horizontal right-hand normal
     }
     const segLen = curve.getLength() / N;
 
@@ -107,7 +114,7 @@ export function create(api) {
     gtex.repeat.set(80, 80);
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshLambertMaterial({ map: gtex }));
     ground.rotation.x = -Math.PI / 2; ground.position.y = -0.02; ground.receiveShadow = true;
-    scene.add(ground);
+    if (!def.space) scene.add(ground);
 
     // road strip
     const roadTex = canvasTex(256, 256, (c, w, h) => {
@@ -123,7 +130,7 @@ export function create(api) {
       for (let i = 0; i <= N; i++) {
         const k = i % N;
         const p = P[k], n = Nr[k];
-        pos.push(p.x + n.x * offA, y, p.z + n.z * offA, p.x + n.x * offB, y, p.z + n.z * offB);
+        pos.push(p.x + n.x * offA, y + p.y, p.z + n.z * offA, p.x + n.x * offB, y + p.y, p.z + n.z * offB);
         uv.push(0, dist / vScale, 1, dist / vScale);
         dist += segLen;
         if (i < N) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
@@ -132,13 +139,26 @@ export function create(api) {
       g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
       g.setIndex(idx); g.computeVertexNormals();
-      const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }));
+      const m = new THREE.Mesh(g, def.space ? new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }) : new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }));
       m.receiveShadow = true;
       scene.add(m);
     }
-    strip(-W, W, 0.02, roadTex, 18);
-    strip(W, W + 1.4, 0.04, curbTex, 4);
-    strip(-W - 1.4, -W, 0.04, curbTex, 4);
+    if (def.space) {
+      const rainbow = canvasTex(256, 64, (c, w, h) => {
+        const cols = ['#ff3b5c', '#ff8a2a', '#ffd23a', '#3cd16b', '#35b6ff', '#5a5aff', '#b44cff'];
+        cols.forEach((col, i) => { c.fillStyle = col; c.fillRect(i * w / 7, 0, w / 7 + 1, h); });
+        c.fillStyle = 'rgba(255,255,255,.35)'; for (let i = 0; i <= 7; i++) c.fillRect(i * w / 7 - 1, 0, 2, h);
+        c.fillStyle = 'rgba(255,255,255,.25)'; c.fillRect(0, 0, w, 6);
+      });
+      const edge = canvasTex(32, 64, (c, w, h) => { c.fillStyle = '#ffffff'; c.fillRect(0, 0, w, h / 2); c.fillStyle = '#ff7ae0'; c.fillRect(0, h / 2, w, h / 2); });
+      strip(-W, W, 0.02, rainbow, 6);
+      strip(W, W + 0.8, 0.05, edge, 3);
+      strip(-W - 0.8, -W, 0.05, edge, 3);
+    } else {
+      strip(-W, W, 0.02, roadTex, 18);
+      strip(W, W + 1.4, 0.04, curbTex, 4);
+      strip(-W - 1.4, -W, 0.04, curbTex, 4);
+    }
 
     // start line
     const chk = canvasTex(64, 16, (c, w, h) => { for (let x = 0; x < 16; x++) for (let y = 0; y < 4; y++) { c.fillStyle = (x + y) % 2 ? '#111' : '#fff'; c.fillRect(x * 4, y * 4, 4, 4); } }, false);
@@ -146,19 +166,19 @@ export function create(api) {
     const line = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, 2.5), new THREE.MeshBasicMaterial({ map: chk }));
     line.rotation.x = -Math.PI / 2;
     line.rotation.z = Math.atan2(T[0].x, T[0].z) + Math.PI / 2 - Math.PI / 2;
-    line.position.set(P[0].x, 0.05, P[0].z);
-    line.lookAt(P[0].x, 10, P[0].z); line.rotateZ(-Math.atan2(T[0].x, T[0].z));
+    line.position.set(P[0].x, 0.06 + P[0].y, P[0].z);
+    line.lookAt(P[0].x, 10 + P[0].y, P[0].z); line.rotateZ(-Math.atan2(T[0].x, T[0].z));
     scene.add(line);
     // start arch
     const archMat = new THREE.MeshLambertMaterial({ color: 0x35b6ff });
     for (const s of [-1, 1]) {
       const post = new THREE.Mesh(new THREE.BoxGeometry(1, 8, 1), archMat);
-      post.position.set(P[0].x + Nr[0].x * (W + 2) * s, 4, P[0].z + Nr[0].z * (W + 2) * s);
+      post.position.set(P[0].x + Nr[0].x * (W + 2) * s, 4 + P[0].y, P[0].z + Nr[0].z * (W + 2) * s);
       scene.add(post);
     }
     const bannerTex = canvasTex(512, 64, (c, w, h) => { c.fillStyle = '#35b6ff'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = 'bold 44px Arial'; c.textAlign = 'center'; c.fillText('WOO KART  ★  ' + def.name.toUpperCase(), w / 2, 48); }, false);
     const banner = new THREE.Mesh(new THREE.BoxGeometry(W * 2 + 5, 2, 0.6), [archMat, archMat, archMat, archMat, new THREE.MeshBasicMaterial({ map: bannerTex }), new THREE.MeshBasicMaterial({ map: bannerTex })]);
-    banner.position.set(P[0].x, 8, P[0].z);
+    banner.position.set(P[0].x, 8 + P[0].y, P[0].z);
     banner.rotation.y = Math.atan2(T[0].x, T[0].z);
     scene.add(banner);
 
@@ -180,7 +200,9 @@ export function create(api) {
       m.castShadow = true;
       scene.add(m);
     }
-    if (def.deco === 'tree') {
+    if (def.deco === 'space') {
+      // nothing on the ground — there is no ground
+    } else if (def.deco === 'tree') {
       instanced(new THREE.CylinderGeometry(0.4, 0.5, 3, 6), new THREE.MeshLambertMaterial({ color: 0x8a5a2b }), 1.5);
       instanced(new THREE.SphereGeometry(2.6, 8, 6), new THREE.MeshLambertMaterial({ color: 0x2e9e3e }), 4.6);
     } else if (def.deco === 'cactus') {
@@ -203,16 +225,51 @@ export function create(api) {
       const i = Math.floor(f * N);
       for (let k = -1.5; k <= 1.5; k++) {
         const m = new THREE.Mesh(boxGeo, boxMat);
-        m.position.set(P[i].x + Nr[i].x * k * 3.6, 1.2, P[i].z + Nr[i].z * k * 3.6);
+        m.position.set(P[i].x + Nr[i].x * k * 3.6, 1.2 + P[i].y, P[i].z + Nr[i].z * k * 3.6);
         scene.add(m);
-        boxes.push({ mesh: m, x: m.position.x, z: m.position.z, cool: 0 });
+        boxes.push({ mesh: m, x: m.position.x, z: m.position.z, y: P[i].y, cool: 0 });
       }
+    }
+    // dash pads (boost arrows on the road)
+    pads = [];
+    const padTex = canvasTex(64, 64, (c, w, h) => { c.fillStyle = '#ff9a1a'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff36a'; for (let k = 0; k < 2; k++) { c.beginPath(); c.moveTo(10, 40 - k * 26 + 22); c.lineTo(32, 18 - k * 26 + 22); c.lineTo(54, 40 - k * 26 + 22); c.lineTo(54, 52 - k * 26 + 22); c.lineTo(32, 30 - k * 26 + 22); c.lineTo(10, 52 - k * 26 + 22); c.fill(); } }, false);
+    for (const f of def.pads || []) {
+      const i = Math.floor(f * N);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), new THREE.MeshBasicMaterial({ map: padTex, transparent: true, opacity: 0.95 }));
+      m.position.set(P[i].x, P[i].y + 0.1, P[i].z);
+      m.lookAt(P[i].x, P[i].y + 10, P[i].z); m.rotateZ(Math.PI - Math.atan2(T[i].x, T[i].z));
+      scene.add(m);
+      pads.push({ x: P[i].x, z: P[i].z, mesh: m });
     }
     return { def, P, T, Nr, curve };
   }
 
   // ---------- karts ----------
   function addSky(def) {
+    if (def.space) {
+      // starfield, nebula glow, a few planets
+      const n = 2500, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const v = new THREE.Vector3().randomDirection().multiplyScalar(900 + Math.random() * 400);
+        pos.set([v.x + 50, v.y, v.z + 200], i * 3);
+        const c = new THREE.Color().setHSL(Math.random(), 0.6, 0.75 + Math.random() * 0.25); col.set([c.r, c.g, c.b], i * 3);
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      scene.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 2.5, vertexColors: true, fog: false, sizeAttenuation: false })));
+      for (let i = 0; i < 6; i++) {
+        const hue = 250 + Math.random() * 90;
+        const neb = canvasTex(256, 256, (c, w, h) => { const gg = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gg.addColorStop(0, `hsla(${hue},90%,62%,.55)`); gg.addColorStop(0.5, `hsla(${hue + 20},90%,50%,.2)`); gg.addColorStop(1, `hsla(${hue},90%,40%,0)`); c.fillStyle = gg; c.fillRect(0, 0, w, h); }, false);
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: neb, fog: false, depthWrite: false, transparent: true, opacity: 0.8 }));
+        const a2 = (i / 6) * Math.PI * 2; sp.position.set(Math.cos(a2) * 850 + 50, 60 + i * 50, Math.sin(a2) * 850 + 200); sp.scale.set(800, 800, 1); scene.add(sp);
+      }
+      for (const [x, y, z, r, c1, c2, ring] of [[600, 200, -300, 90, '#ff8a5a', '#a03a8a', true], [-500, 320, 700, 60, '#5ad8ff', '#2a3a9a', false], [200, -150, 900, 140, '#8a5aff', '#2a1050', false]]) {
+        const tex = canvasTex(128, 128, (c, w, h) => { const gg = c.createLinearGradient(0, 0, 0, h); gg.addColorStop(0, c1); gg.addColorStop(1, c2); c.fillStyle = gg; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(255,255,255,.12)'; for (let k = 0; k < 8; k++) c.fillRect(0, k * 16 + 4, w, 5); }, false);
+        const pl = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 24), new THREE.MeshBasicMaterial({ map: tex, fog: false }));
+        pl.position.set(x, y, z); scene.add(pl);
+        if (ring) { const rg = new THREE.Mesh(new THREE.RingGeometry(r * 1.3, r * 1.9, 48), new THREE.MeshBasicMaterial({ color: 0xffd8a0, side: THREE.DoubleSide, transparent: true, opacity: 0.6, fog: false })); rg.position.copy(pl.position); rg.rotation.x = 1.2; scene.add(rg); }
+      }
+      return;
+    }
     // gradient sky dome
     const top = new THREE.Color(def.sky).multiplyScalar(0.75), bottom = new THREE.Color(def.fog);
     const skyTex = canvasTex(4, 256, (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#' + top.getHexString()); g.addColorStop(0.55, '#' + bottom.getHexString()); g.addColorStop(1, '#' + bottom.getHexString()); c.fillStyle = g; c.fillRect(0, 0, w, h); }, false);
@@ -310,7 +367,7 @@ export function create(api) {
       scene.add(vis.root);
       karts.push({
         vis, color, human: o.human || null, name: o.human ? me.name : CPU_NAMES[o.cpu % CPU_NAMES.length],
-        x: P.x + Nr.x * 3.5 * side, z: P.z + Nr.z * 3.5 * side, h: Math.atan2(T.x, T.z), speed: 0,
+        x: P.x + Nr.x * 3.5 * side, z: P.z + Nr.z * 3.5 * side, y: P.y, h: Math.atan2(T.x, T.z), speed: 0, falling: 0, fallV: 0, padT: 0,
         idx: i, lap: 0, half: true, finished: false, finishTime: 0, place: gi + 1,
         item: null, roulette: 0, spin: 0, boost: 0, star: 0, drift: 0, driftDir: 0, driftCharge: 0,
         ai: { offset: (Math.random() - 0.5) * 6, skill: 0.88 + Math.random() * 0.1, itemDelay: 2 + Math.random() * 3 },
@@ -336,8 +393,9 @@ export function create(api) {
     const c = k.cam;
     c.position.x += (tx - c.position.x) * lerp;
     c.position.z += (tz - c.position.z) * lerp;
-    c.position.y += (height - c.position.y) * lerp;
-    c.lookAt(k.x + fx * 5, 1.2, k.z + fz * 5);
+    const ky = k.falling > 0 ? track.P[k.idx].y : (k.y || 0); // keep the camera up while the kart falls
+    c.position.y += (height + ky - c.position.y) * lerp;
+    c.lookAt(k.x + fx * 5, k.falling > 0 ? k.y + 1 : 1.2 + ky, k.z + fz * 5);
     const fov = 70 + (k.boost > 0 || k.star > 0 ? 10 : 0) + k.speed * 0.15;
     c.fov += (fov - c.fov) * 0.1; c.updateProjectionMatrix();
   }
@@ -377,12 +435,12 @@ export function create(api) {
     else if (it === 'banana') {
       const m = new THREE.Mesh(bananaGeo, bananaMat); scene.add(m);
       const d = back ? -3 : 16;
-      items.push({ type: 'banana', mesh: m, x: k.x + fx * d, z: k.z + fz * d, vx: 0, vz: 0, life: 60, owner: k, age: 0 });
+      items.push({ type: 'banana', mesh: m, y: k.y || 0, x: k.x + fx * d, z: k.z + fz * d, vx: 0, vz: 0, life: 60, owner: k, age: 0 });
       api.audio.play('whoosh');
     } else if (it === 'shell') {
       const m = new THREE.Mesh(shellGeo, shellMat); scene.add(m);
       const dir = back ? -1 : 1;
-      items.push({ type: 'shell', mesh: m, x: k.x + fx * 2.5 * dir, z: k.z + fz * 2.5 * dir, vx: fx * 48 * dir, vz: fz * 48 * dir, life: 5, owner: k, age: 0 });
+      items.push({ type: 'shell', mesh: m, y: k.y || 0, x: k.x + fx * 2.5 * dir, z: k.z + fz * 2.5 * dir, vx: fx * 48 * dir, vz: fz * 48 * dir, life: 5, owner: k, age: 0 });
       api.audio.play('whoosh');
     }
   }
@@ -408,7 +466,7 @@ export function create(api) {
       back = p.pressed(api.BTN.DOWN);
     } else {
       const ti = (k.idx + 10 + Math.floor(k.speed * 0.35)) % N;
-      k.ai.offset += (Math.random() - 0.5) * 0.2; k.ai.offset = Math.max(-5, Math.min(5, k.ai.offset));
+      k.ai.offset += (Math.random() - 0.5) * 0.2; const lim = track.def.space ? 3 : 5; k.ai.offset = Math.max(-lim, Math.min(lim, k.ai.offset));
       const tp = track.P[ti], tn = track.Nr[ti];
       const tx = tp.x + tn.x * k.ai.offset, tz = tp.z + tn.z * k.ai.offset;
       const desired = Math.atan2(tx - k.x, tz - k.z);
@@ -420,6 +478,19 @@ export function create(api) {
   }
 
   function stepKart(k, dt) {
+    if (k.falling > 0) { // fell off the rainbow: drop, then get fished back onto the track
+      k.falling -= dt; k.fallV -= 32 * dt; k.y += k.fallV * dt;
+      k.x += Math.sin(k.h) * k.speed * dt * 0.6; k.z += Math.cos(k.h) * k.speed * dt * 0.6;
+      k.vis.root.position.set(k.x, k.y, k.z);
+      k.vis.model.rotation.y += dt * 4;
+      if (k.falling <= 0) {
+        const P = track.P[k.idx], T = track.T[k.idx];
+        Object.assign(k, { x: P.x, z: P.z, y: P.y + 3, h: Math.atan2(T.x, T.z), speed: 0, spin: 0, drift: 0, driftCharge: 0, boost: 0 });
+        k.vis.model.rotation.y = 0;
+        if (k.human) api.audio.play('powerup');
+      }
+      return;
+    }
     const c = state === 'race' && !k.finished ? controls(k) : (k.finished && !k.human ? controls(k) : { steer: 0, gas: k.finished, brake: false, drift: false, use: false, back: false });
     if (k.finished && k.human) { // autopilot after finishing
       const cc = (() => { const save = k.human; k.human = null; const r = controls(k); k.human = save; return r; })();
@@ -469,7 +540,13 @@ export function create(api) {
 
     // invisible wall
     const lat2 = latOffset(k);
-    if (Math.abs(lat2) > W + 22) {
+    if (track.def.space) {
+      if (Math.abs(lat2) > W + 1.2 && k.star <= 0) {
+        k.falling = 1.7; k.fallV = 3;
+        api.audio.play('aww');
+        if (k.human) api.rumble(k.human.index, 400);
+      }
+    } else if (Math.abs(lat2) > W + 22) {
       const n = track.Nr[k.idx], push = Math.abs(lat2) - (W + 22);
       k.x -= n.x * push * Math.sign(lat2); k.z -= n.z * push * Math.sign(lat2);
       k.speed *= 0.7;
@@ -486,11 +563,17 @@ export function create(api) {
       }
     } else if (ni > N - 60 && k.idx < 60) { k.lap--; k.half = true; }
     k.idx = ni;
+    const ground = track.P[ni].y;
+    k.y = k.y == null ? ground : k.y + (ground - k.y) * Math.min(1, dt * 10);
+    if (k.padT > 0) k.padT -= dt;
+    for (const pd of pads) if (k.padT <= 0 && (k.x - pd.x) ** 2 + (k.z - pd.z) ** 2 < 3.2 * 3.2) { k.boost = Math.max(k.boost, 1.0); k.padT = 1; if (k.human) { api.audio.play('boost'); api.rumble(k.human.index, 120); } }
 
     // visuals
     const r = k.vis.root;
     r.position.set(k.x, 0, k.z);
-    r.rotation.y = k.h;
+    r.position.y = k.y || 0;
+    r.rotation.order = 'YXZ';
+    r.rotation.set(-Math.asin(Math.max(-1, Math.min(1, track.T[k.idx].y))), k.h, 0);
     k.wobble += dt * k.speed;
     k.vis.model.position.y = off ? Math.abs(Math.sin(k.wobble * 2)) * 0.08 : 0;
     for (const w of k.vis.wheels) w.rotation.x += k.speed * dt / 0.42;
@@ -535,7 +618,7 @@ export function create(api) {
     for (const bx of boxes) {
       if (bx.cool > 0) { bx.cool -= dt; bx.mesh.visible = bx.cool <= 0; continue; }
       bx.mesh.rotation.y += dt * 1.5; bx.mesh.rotation.x += dt * 0.7;
-      bx.mesh.position.y = 1.2 + Math.sin(raceTime * 3 + bx.x) * 0.2;
+      bx.mesh.position.y = 1.2 + (bx.y || 0) + Math.sin(raceTime * 3 + bx.x) * 0.2;
       for (const k of karts) {
         const dx = k.x - bx.x, dz = k.z - bx.z;
         if (dx * dx + dz * dz < 2.6 * 2.6) {
@@ -555,9 +638,9 @@ export function create(api) {
         for (let i = 0; i < N; i += 2) { const dx = track.P[i].x - it.x, dz = track.P[i].z - it.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; bi = i; } }
         const n = track.Nr[bi], lat = (it.x - track.P[bi].x) * n.x + (it.z - track.P[bi].z) * n.z;
         if (Math.abs(lat) > W + 2) { const vn = it.vx * n.x + it.vz * n.z; if (vn * lat > 0) { it.vx -= 2 * vn * n.x; it.vz -= 2 * vn * n.z; api.audio.play('bounce'); } }
-        it.mesh.position.set(it.x, 0.55, it.z);
+        it.mesh.position.set(it.x, 0.55 + it.y, it.z);
       } else {
-        it.mesh.position.set(it.x, 0.35, it.z);
+        it.mesh.position.set(it.x, 0.35 + it.y, it.z);
         it.mesh.rotation.y += dt;
       }
       for (const k of karts) {
