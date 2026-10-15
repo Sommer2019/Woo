@@ -27,7 +27,28 @@ export class Host {
     this.code = code || randomCode();
     try { sessionStorage.setItem('woo-code', this.code); } catch (e) {}
     this.openBroadcast();
+    this.openRelay();
     this.openPeer(0);
+  }
+
+  // Relay over public MQTT brokers: works when WebRTC can't get through (mobile data etc.)
+  openRelay() {
+    if (typeof WooMQTT === 'undefined') return;
+    if (this.mq) this.mq.close();
+    const base = WooMQTT.topic(this.code);
+    const mq = new WooMQTT.Client({
+      subscribe: [base + '/up'],
+      onMessage: (topic, text) => {
+        let m; try { m = JSON.parse(text); } catch (e) { return; }
+        const { from, d } = m || {};
+        if (!from) return;
+        const id = 'mq:' + from;
+        if (!this.links.has(id)) this.links.set(id, { kind: 'relay', send: (obj) => mq.publish(base + '/down/' + from, JSON.stringify(obj)) });
+        if (d && d.t === 'bye') { this.links.delete(id); this.onClose(id); return; }
+        this.onMessage(id, d);
+      },
+    });
+    this.mq = mq;
   }
 
   openBroadcast() {
@@ -63,6 +84,7 @@ export class Host {
         try { sessionStorage.setItem('woo-code', this.code); } catch (e) {}
         if (this.bc) this.bc.close();
         this.openBroadcast();
+        this.openRelay();
         this.onStatus('code', this.code);
         this.openPeer(attempt + 1);
         return;

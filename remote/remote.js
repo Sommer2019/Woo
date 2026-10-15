@@ -74,29 +74,54 @@
     } else peerConnect(code);
   }
 
-  let peer = null;
+  // 2) direct WebRTC; if that hasn't worked after a few seconds, 3) the MQTT relay
+  let peer = null, relay = null, attempt = 0;
   function peerConnect(code) {
-    if (typeof Peer === 'undefined') { status('Could not load the connection library. Check your internet.'); return; }
-    if (peer) { try { peer.destroy(); } catch (e) {} }
+    const my = ++attempt;
+    if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
+    if (relay) { relay.close(); relay = null; }
+    const fallback = () => { if (my === attempt && !link && !relay) relayConnect(code, my); };
+    if (typeof Peer === 'undefined') { fallback(); return; }
+    status('Connecting directly…');
+    const timer = setTimeout(fallback, 5000);
     peer = new Peer({ debug: 0 });
-    const timeout = setTimeout(() => status('Still trying… is the TV page open and showing code ' + code + '?'), 8000);
     peer.on('open', () => {
       const conn = peer.connect(PREFIX + code, { reliable: true, serialization: 'json' });
       conn.on('open', () => {
-        clearTimeout(timeout);
+        if (my !== attempt || link) { conn.close(); return; }
+        clearTimeout(timer);
+        if (relay) { relay.close(); relay = null; }
         link = { send: (o) => { try { conn.send(o); } catch (e) {} }, close: () => conn.close(), kind: 'p2p' };
         link.send(hello());
       });
-      conn.on('data', onMsg);
-      conn.on('close', lost);
-      conn.on('error', lost);
+      conn.on('data', (d) => { if (link && link.kind === 'p2p') onMsg(d); });
+      conn.on('close', () => { if (link && link.kind === 'p2p') lost(); });
+      conn.on('iceStateChanged', (s) => { if (s === 'failed' && !link) { clearTimeout(timer); fallback(); } });
     });
-    peer.on('error', (err) => {
-      clearTimeout(timeout);
-      if (err.type === 'peer-unavailable') status('No console with code ' + code + ' found. Check the TV.');
-      else status('Connection error: ' + err.type);
-      if (link) lost();
+    peer.on('error', () => { if (link && link.kind === 'p2p') lost(); else { clearTimeout(timer); fallback(); } });
+  }
+
+  function relayConnect(code, my) {
+    if (typeof WooMQTT === 'undefined') { status('Could not load the connection library. Check your internet.'); return; }
+    status('Direct connection blocked — trying the relay…');
+    const base = WooMQTT.topic(code);
+    const r = new WooMQTT.Client({
+      subscribe: [base + '/down/' + clientId],
+      onStatus: (s) => {
+        if (s === 'ready' && my === attempt) r.publish(base + '/up', JSON.stringify({ from: clientId, d: hello() }));
+      },
+      onMessage: (topic, text) => {
+        if (my !== attempt) return;
+        let d; try { d = JSON.parse(text); } catch (e) { return; }
+        if (!link && d && d.t === 'slot') {
+          if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
+          link = { send: (o) => r.publish(base + '/up', JSON.stringify({ from: clientId, d: o })), close: () => r.close(), kind: 'relay' };
+        }
+        if (link && link.kind === 'relay') onMsg(d);
+      },
     });
+    relay = r;
+    setTimeout(() => { if (my === attempt && !link) status('No console with code ' + code + ' answered. Is the TV page open and showing this code?'); }, 9000);
   }
 
   function hello() { return { t: 'hello', id: clientId, name: navigator.platform || '', mo: motionSeen }; }
@@ -126,7 +151,8 @@
 
   function lost() {
     if (!link) return;
-    link = null;
+    try { link.close(); } catch (e) {}
+    link = null; lastMsg = 0;
     $('#lost').classList.remove('hidden');
   }
   $('#retry').addEventListener('click', () => { $('#lost').classList.add('hidden'); connect(store.get('woo-last-code', '')); });
@@ -308,7 +334,13 @@
   setInterval(() => {
     if (!link) return;
     const now = performance.now();
-    if (dx || dy || edges || now - lastSent > 33 || (mode === 'sideways' && now - lastSent > 16)) sendNow();
+    if (link.kind === 'relay') {
+      // the relay is slower: ~25 updates/s while something happens, otherwise a heartbeat
+      if (now - lastSent < 40) return;
+      if (dx || dy || edges || mode === 'sideways' || mag > 6 || now - lastSent > 500) sendNow();
+    } else if (dx || dy || edges || now - lastSent > 33 || (mode === 'sideways' && now - lastSent > 16)) sendNow();
+    // the TV pings every 2 s; silence means we lost it
+    if (lastMsg && now - lastMsg > 9000) lost();
   }, 16);
 
   // ---------- settings drawer ----------

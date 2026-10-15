@@ -42,7 +42,8 @@ const host = new Host({
 
 function join(link, d) {
   let p = players.find((pl) => pl.link === link);
-  if (!p) p = players.find((pl) => !pl.link && pl.clientId && pl.clientId === d.id);
+  // same phone coming back (possibly over another transport) keeps its slot
+  if (!p) p = players.find((pl) => pl.clientId && pl.clientId === d.id);
   if (!p) p = players.find((pl) => !pl.link && !pl.clientId);
   if (!p) p = players.find((pl) => !pl.link);
   if (!p) { host.send(link, { t: 'full' }); return; }
