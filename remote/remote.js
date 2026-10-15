@@ -145,6 +145,7 @@
       case 'rum': buzz(d.ms); break;
       case 'full': status('That console already has 4 remotes connected.'); break;
       case 'who': if (link) link.send(hello()); break;
+      case 'ask': setTimeout(() => { const v = window.prompt(d.prompt || 'Text', d.v || ''); if (v != null && link) link.send({ t: 'txt', v: v.slice(0, 12) }); }, 50); break;
       default: break;
     }
   }
@@ -351,6 +352,7 @@
   };
   bind('#opt-gyro', 'gyro'); bind('#opt-tilt', 'tilt'); bind('#opt-flip', 'flip'); bind('#opt-haptic', 'haptic'); bind('#opt-sens', 'sens', 'value');
   $('#gear').addEventListener('click', () => $('#settings').classList.remove('hidden'));
+  $('#type').addEventListener('click', () => { const v = window.prompt('Type a name / text for the TV', ''); if (v != null && link) link.send({ t: 'txt', v: v.slice(0, 12) }); });
   $('#close-settings').addEventListener('click', () => $('#settings').classList.add('hidden'));
 
   if (qs.get('c') && qs.get('auto')) start();

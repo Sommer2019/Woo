@@ -173,3 +173,11 @@ table.score th { background: #eef1f4; }
 .g-card { box-shadow: 0 8px 20px rgba(30,60,100,.12), inset 0 2px 0 #fff; background: linear-gradient(#ffffff, #f1f5f9); }
 #channel { background: radial-gradient(ellipse at 50% 30%, #ffffff, #e8eef4); }
 #banner { border-bottom: 4px solid #e2e8ee; }
+
+/* name keyboard */
+.kb-text { min-width: 40vw; padding: 1.4vh 2vw; font-size: 5vh; font-weight: 800; background: #fff; border: 4px solid; border-radius: 20px; color: #333; }
+.kb-caret { animation: blink 1s steps(2) infinite; color: var(--woo-blue); margin-left: 2px; }
+.kb { display: flex; flex-direction: column; gap: 1vh; }
+.kb-row { gap: .6vw !important; }
+.kb-key { min-width: 6.2vh !important; padding: 1.2vh .8vw !important; font-size: 2.8vh !important; text-align: center; }
+.kb-space { min-width: 24vw !important; }

@@ -108,10 +108,17 @@ const KEYMAP = {
   KeyH: BTN.HOME, Escape: BTN.HOME, Home: BTN.HOME,
 };
 
+// While something on the TV wants typed text (e.g. a Me name), keys go there instead of acting as buttons.
+export const textInput = { handler: null };
+
 export function initKeyboard(screenEl) {
   const p = players[0];
   const activate = () => { p.kbActive = true; };
   window.addEventListener('keydown', (e) => {
+    if (textInput.handler) {
+      if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter' || e.key === 'Escape') { textInput.handler(e.key); e.preventDefault(); }
+      return;
+    }
     if (e.code === 'Space') {
       if (!e.repeat) p.swings.push({ power: 0.75, dir: 0, time: performance.now(), kb: true });
       p.mag = 22;

@@ -1,6 +1,7 @@
 // Woo Me Channel — edit the four player avatars, with a live 3D turntable preview.
 import * as THREE from '../lib/three.module.min.js';
 import { overlay, meCanvas } from './common.js';
+import { textInput } from '../input.js';
 import { getMe, setMe, randomMe, randomName, normalize, buildMe3D, drawMe, SKINS, HAIRS, SHIRTS, PANTS, EYE_COLORS, LIPS, OPTIONS } from '../me.js';
 
 const TABS = [
@@ -80,7 +81,7 @@ export function create(api) {
         <div class="me-left">
           <div id="me-stage"></div>
           <h2 style="color:${api.COLORS[editing]}">${escapeHtml(draft.name)}</h2>
-          <div class="g-row"><div class="pill small" data-ui="name">🎲 Name</div><div class="pill small" data-ui="random">🎲 Random Me</div></div>
+          <div class="g-row"><div class="pill small" data-ui="typename">✏️ Name</div><div class="pill small" data-ui="name">🎲</div><div class="pill small" data-ui="random">🎲 Random Me</div></div>
         </div>
         <div class="me-right">
           <div class="me-tabs">${TABS.map((x) => `<div class="pill small ${x.id === tab ? 'sel' : ''}" data-ui="tab" data-t="${x.id}">${x.label}</div>`).join('')}</div>
@@ -92,12 +93,68 @@ export function create(api) {
       bool: (x) => { draft[x.dataset.k] = !draft[x.dataset.k]; rebuild(); render(); },
       tab: (x) => { tab = x.dataset.t; render(); },
       name: () => { draft.name = randomName(); render(); },
+      typename: () => nameEditor(),
       random: () => { draft = randomMe(); rebuild(); render(); },
       cancel: () => list(),
       save: () => { setMe(editing, draft); api.toast(`Saved ${draft.name}!`); list(); },
     }, 'me-bg');
     el.querySelector('#me-stage').appendChild(renderer.domElement);
   }
+
+  // ---------- name entry: on-screen keyboard, real keyboard, or typing on the phone ----------
+  const ROWS_KB = ['1234567890', 'QWERTZUIOP', 'ASDFGHJKLÖ', 'YXCVBNMÄÜ-'];
+  let text = '', shift = false;
+  function nameEditor() {
+    text = draft.name.replace(/^Player \d$/, '');
+    shift = true;
+    drawKeyboard();
+    textInput.handler = (key) => {
+      if (key === 'Enter') return acceptName();
+      if (key === 'Escape') return closeName();
+      if (key === 'Backspace') text = text.slice(0, -1);
+      else if (text.length < 12) text += key;
+      drawKeyboard();
+    };
+    api.askText(editing, 'Name for Player ' + (editing + 1), text);
+  }
+  function acceptName() {
+    const t = text.trim();
+    if (t) draft.name = t;
+    closeName();
+  }
+  function closeName() { textInput.handler = null; render(); }
+  function drawKeyboard() {
+    if (el) el.remove();
+    const key = (k) => `<div class="pill small kb-key" data-ui="key" data-k="${k}">${shift ? k : k.toLowerCase()}</div>`;
+    el = overlay(api, `
+      <h2>✏️ Name for Player ${editing + 1}</h2>
+      <div class="kb-text" style="border-color:${api.COLORS[editing]}">${escapeHtml(text) || '<span class="dim">…</span>'}<span class="kb-caret">|</span></div>
+      <div class="kb">${ROWS_KB.map((r) => `<div class="g-row kb-row">${[...r].map(key).join('')}</div>`).join('')}
+        <div class="g-row kb-row">
+          <div class="pill small kb-key ${shift ? 'sel' : ''}" data-ui="shift">⇧ Shift</div>
+          <div class="pill small kb-key kb-space" data-ui="space">Space</div>
+          <div class="pill small kb-key" data-ui="back">⌫</div>
+        </div>
+      </div>
+      <p class="g-hint">Tip: you can also type on a keyboard, or on your phone — tap ⌨ on the remote.</p>
+      <div class="g-row"><div class="pill" data-ui="cancel">Cancel</div><div class="pill" data-ui="ok">✔ OK</div></div>`, {
+      key: (x) => { if (text.length < 12) { text += shift ? x.dataset.k : x.dataset.k.toLowerCase(); shift = false; } drawKeyboard(); },
+      shift: () => { shift = !shift; drawKeyboard(); },
+      space: () => { if (text.length < 12 && text) text += ' '; drawKeyboard(); },
+      back: () => { text = text.slice(0, -1); drawKeyboard(); },
+      cancel: () => closeName(),
+      ok: () => acceptName(),
+    }, 'me-bg');
+  }
+  const onPhoneText = (e) => {
+    if (editing < 0) return;
+    const t = e.detail.text.trim();
+    if (!t) return;
+    draft.name = t;
+    api.toast(`Name set to ${t}`);
+    if (textInput.handler) closeName(); else render();
+  };
+  window.addEventListener('woo-text', onPhoneText);
 
   list();
   return {
@@ -112,7 +169,7 @@ export function create(api) {
       cam.lookAt(0, top * 0.62, 0);
       renderer.render(scene, cam);
     },
-    destroy() { if (el) el.remove(); renderer.dispose(); },
+    destroy() { if (el) el.remove(); renderer.dispose(); textInput.handler = null; window.removeEventListener('woo-text', onPhoneText); },
   };
 }
 
