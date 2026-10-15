@@ -21,6 +21,10 @@ original knock-off written from scratch in plain JavaScript.
 | **Woo Play: Duck Blaster** | Shooting gallery for everyone at once | Pointer, **B/A** fire |
 | **Woo Fishing** | Hold your lure still, yank the phone up when it bites | Pointer |
 | **Woo Tanks!** | Co-op top-down tank missions | D-pad drive, pointer aim, **A/B** fire, **1** mine |
+| **Woo Shop Channel** | Spend (fake) Woo Points on extra games — they download and appear on menu page 2. Watch a silly ad for more points | Pointer |
+| **Woo Browser** | Internet channel: Wikipedia search + articles with clickable links, Woo News, any URL in a frame (if the site allows it) | Pointer, D-pad scrolls |
+| **Woo Weather** | Live forecast (Open-Meteo): animated sky, 24 h curve, 7 days, city search or your location, °C/°F | Pointer |
+| Shop games | **Woo Pong** (4P), **Woo Darts** (flick to throw), **Woo Breakout** (co-op paddles), **Woo Mini Golf** (6 holes, swing to putt) | Pointer + swing |
 | **???** | There's a suspicious red letter in the message board (✉). Don't open it. | — |
 
 The menu works like you remember: a 4×3 grid of channels, click one to get a big preview with
@@ -74,5 +78,7 @@ Repository **Settings → Pages → Build and deployment → Source: GitHub Acti
 `.github/workflows/pages.yml` then deploys every push to `main` (and can be started by hand under
 **Actions → Deploy to GitHub Pages → Run workflow**). There is no build step. To run locally, serve the folder
 with any static server (e.g. `npx http-server .`); phones need HTTPS for motion sensors, so use the Pages URL for real play.
+
+Text entry (Me names, browser, weather): on-screen keyboard, the TV's keyboard, or type on the phone with the ⌨ button.
 
 Dev shortcuts: `?skip=1` jumps past the warning screen, `?game=kart` (or `bros`, `sports`, `duck`, `fish`, `tanks`, `me`) boots straight into a game.

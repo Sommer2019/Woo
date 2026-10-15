@@ -2,6 +2,7 @@
 import * as THREE from '../lib/three.module.min.js';
 import { overlay, meCanvas } from './common.js';
 import { textInput } from '../input.js';
+import { openKeyboard } from './keyboard.js';
 import { getMe, setMe, randomMe, randomName, normalize, buildMe3D, drawMe, SKINS, HAIRS, SHIRTS, PANTS, EYE_COLORS, LIPS, OPTIONS } from '../me.js';
 
 const TABS = [
@@ -101,58 +102,24 @@ export function create(api) {
     el.querySelector('#me-stage').appendChild(renderer.domElement);
   }
 
-  // ---------- name entry: on-screen keyboard, real keyboard, or typing on the phone ----------
-  const ROWS_KB = ['1234567890', 'QWERTZUIOP', 'ASDFGHJKLÖ', 'YXCVBNMÄÜ-'];
-  let text = '', shift = false;
+  // ---------- name entry (shared keyboard: pointer, physical keyboard or phone) ----------
+  let kbOpen = false;
   function nameEditor() {
-    text = draft.name.replace(/^Player \d$/, '');
-    shift = true;
-    drawKeyboard();
-    textInput.handler = (key) => {
-      if (key === 'Enter') return acceptName();
-      if (key === 'Escape') return closeName();
-      if (key === 'Backspace') text = text.slice(0, -1);
-      else if (text.length < 12) text += key;
-      drawKeyboard();
-    };
-    api.askText(editing, 'Name for Player ' + (editing + 1), text);
-  }
-  function acceptName() {
-    const t = text.trim();
-    if (t) draft.name = t;
-    closeName();
-  }
-  function closeName() { textInput.handler = null; render(); }
-  function drawKeyboard() {
-    if (el) el.remove();
-    const key = (k) => `<div class="pill small kb-key" data-ui="key" data-k="${k}">${shift ? k : k.toLowerCase()}</div>`;
-    el = overlay(api, `
-      <h2>✏️ Name for Player ${editing + 1}</h2>
-      <div class="kb-text" style="border-color:${api.COLORS[editing]}">${escapeHtml(text) || '<span class="dim">…</span>'}<span class="kb-caret">|</span></div>
-      <div class="kb">${ROWS_KB.map((r) => `<div class="g-row kb-row">${[...r].map(key).join('')}</div>`).join('')}
-        <div class="g-row kb-row">
-          <div class="pill small kb-key ${shift ? 'sel' : ''}" data-ui="shift">⇧ Shift</div>
-          <div class="pill small kb-key kb-space" data-ui="space">Space</div>
-          <div class="pill small kb-key" data-ui="back">⌫</div>
-        </div>
-      </div>
-      <p class="g-hint">Tip: you can also type on a keyboard, or on your phone — tap ⌨ on the remote.</p>
-      <div class="g-row"><div class="pill" data-ui="cancel">Cancel</div><div class="pill" data-ui="ok">✔ OK</div></div>`, {
-      key: (x) => { if (text.length < 12) { text += shift ? x.dataset.k : x.dataset.k.toLowerCase(); shift = false; } drawKeyboard(); },
-      shift: () => { shift = !shift; drawKeyboard(); },
-      space: () => { if (text.length < 12 && text) text += ' '; drawKeyboard(); },
-      back: () => { text = text.slice(0, -1); drawKeyboard(); },
-      cancel: () => closeName(),
-      ok: () => acceptName(),
-    }, 'me-bg');
+    if (el) { el.remove(); el = null; }
+    kbOpen = true;
+    openKeyboard(api, {
+      title: `Name for Player ${editing + 1}`, value: draft.name.replace(/^Player \d$/, ''), max: 12,
+      color: api.COLORS[editing], playerIndex: editing, cls: 'me-bg',
+      onDone: (t) => { kbOpen = false; if (t) draft.name = t; render(); },
+    });
   }
   const onPhoneText = (e) => {
-    if (editing < 0) return;
+    if (editing < 0 || kbOpen) return;
     const t = e.detail.text.trim();
     if (!t) return;
     draft.name = t;
     api.toast(`Name set to ${t}`);
-    if (textInput.handler) closeName(); else render();
+    render();
   };
   window.addEventListener('woo-text', onPhoneText);
 
