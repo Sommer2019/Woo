@@ -1,5 +1,6 @@
 // Channel list for the Woo Menu, with procedurally drawn thumbnails/banners.
 import { drawMe, getMe } from './me.js';
+import { hb } from './cheats.js';
 
 function title(ctx, text, w, h, big, color = '#fff', stroke = 'rgba(0,0,0,.35)') {
   const size = big ? h * 0.13 : Math.max(11, h * 0.15);
@@ -221,6 +222,27 @@ export function drawDuck(ctx, x, y, s, t, dir = 1, color = '#4a8f3a') {
   ctx.restore();
 }
 
+export function drawHomebrew(ctx, t, w, h, big, noText) {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, '#0b2a5c'); g.addColorStop(1, '#3a8de0');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 18; i++) {
+    const x = (i * 97.3) % w, r = (3 + (i % 5) * 2) * (big ? 2.5 : 1);
+    const y = h - ((t * (20 + (i % 4) * 12) + i * 53) % (h + 40)) + 20;
+    ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = big ? 3 : 1.5;
+    ctx.beginPath(); ctx.arc(x + Math.sin(t + i) * 6, y, r, 0, 7); ctx.stroke();
+  }
+  if (noText) return;
+  const size = big ? h * 0.12 : Math.max(11, h * 0.13);
+  ctx.font = `800 ${size}px "M PLUS Rounded 1c", Arial`; ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('Homebrew', w / 2, big ? h * 0.45 : h * 0.45);
+  ctx.font = `700 ${size * 0.55}px "M PLUS Rounded 1c", Arial`;
+  ctx.fillText(big ? 'Unofficial. Unsupported. Unbelievably secret.' : 'Channel', w / 2, big ? h * 0.58 : h * 0.62);
+}
+
+export function visibleChannels() { return CHANNELS.filter((c) => !c.secret || hb.installed); }
+
 const lazy = (p) => () => import(p);
 
 export const CHANNELS = [
@@ -232,4 +254,5 @@ export const CHANNELS = [
   { id: 'duck', title: 'Woo Play: Duck Blaster', music: 'shoot', draw: draws.duck, load: lazy('./games/duck.js') },
   { id: 'fish', title: 'Woo Fishing', music: 'fish', draw: draws.fish, load: lazy('./games/fishing.js') },
   { id: 'tanks', title: 'Woo Tanks!', music: 'shoot', draw: draws.tanks, load: lazy('./games/tanks.js') },
+  { id: 'homebrew', title: 'Homebrew Channel', music: 'shoot', draw: (...a) => drawHomebrew(...a), load: lazy('./games/homebrew.js'), secret: true },
 ];

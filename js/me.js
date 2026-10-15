@@ -1,5 +1,6 @@
 // "Woo Me" avatars — a little character per player slot, used across games.
 import { COLORS } from './input.js';
+import { cheat } from './cheats.js';
 
 export const SKINS = ['#ffe0c4', '#f6c9a0', '#e0a878', '#b77b52', '#7d4f32'];
 export const HAIRS = ['#2b1d14', '#5a3a1e', '#a8652a', '#e8c25a', '#d84a2a', '#7a7f88', '#3f58c9', '#e86fb0'];
@@ -92,6 +93,7 @@ export function buildMe3D(THREE, me, opts = {}) {
   }
   const head = new THREE.Group();
   head.position.y = 1.5;
+  if (cheat('bigHead')) { head.scale.setScalar(2); head.position.y = 1.75; }
   const skull = new THREE.Mesh(new THREE.SphereGeometry(0.25, 20, 16), skin);
   skull.scale.set(0.92, 1.05, 0.95); head.add(skull);
   const hairM = new THREE.Mesh(new THREE.SphereGeometry(0.265, 20, 12, 0, Math.PI * 2, 0, me.hairStyle === 1 ? 1.9 : 1.3), hair);

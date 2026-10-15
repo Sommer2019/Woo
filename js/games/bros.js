@@ -2,6 +2,7 @@
 // D-pad move, 2 jump, 1 run, shake = twirl.
 import { makeCanvas, overlay, bigText } from './common.js';
 import { drawPlumber } from '../channels.js';
+import { cheat } from '../cheats.js';
 
 const T = 48;         // tile size
 const ROWS = 15;
@@ -245,7 +246,7 @@ export function create(api) {
     }
     if (pl.twirlT > 0) pl.twirlT -= dt;
     const rising = pl.vy < 0;
-    const grav = rising && (jumpBtn || pl.twirlT > 0) ? 1500 : 3000;
+    const grav = (rising && (jumpBtn || pl.twirlT > 0) ? 1500 : 3000) * (cheat('moon') ? 0.42 : 1);
     pl.vy = Math.min(900, pl.vy + grav * dt);
     if (pl.twirlT > 0 && pl.vy > 120) pl.vy = 120;
 
@@ -364,7 +365,7 @@ export function create(api) {
 
     // all dead?
     if (plist.every((pl) => pl.dead && pl.deadT > 2)) {
-      lives--;
+      if (!cheat('infLives')) lives--;
       if (lives <= 0) { gameOver(); return; }
       plist.forEach((pl) => { pl.big = false; });
       startLevel(levelIdx);

@@ -117,3 +117,18 @@ table.score th { background: #eef1f4; }
 .cursor { position: absolute; left: 0; top: 0; width: 6vh; height: 6vh; margin: -0.6vh 0 0 -2.2vh; transform-origin: 2.2vh 0.6vh; filter: drop-shadow(0 3px 3px rgba(0,0,0,.35)); }
 .cursor svg { width: 100%; height: 100%; }
 #sound-hint { position: absolute; right: 1.5vw; bottom: 1.5vh; z-index: 90; background: #fff8d6; border: 2px solid #f0c040; border-radius: 12px; padding: .8vh 1vw; font-size: 1.9vh; color: #6b5a12; }
+
+/* ---------- message board / letter bomb ---------- */
+.letters { display: flex; flex-direction: column; gap: 1.4vh; }
+.letter { display: flex; align-items: center; gap: 1.5vw; padding: 1.6vh 1.6vw; border-radius: 16px; border: 3px solid #dde1e6; background: #fbfcfd; transition: transform .12s, border-color .12s; }
+.letter .env { font-size: 4vh; }
+.letter .dim { margin-left: auto; font-size: .8em; }
+.letter.hover { border-color: var(--woo-blue); transform: scale(1.02); }
+.letter.red { background: #ffecec; border-color: #ff6b6b; color: #c62828; animation: redpulse 1.2s ease-in-out infinite; }
+.letter.red.hover { border-color: #c62828; }
+@keyframes redpulse { 50% { box-shadow: 0 0 0 6px rgba(255,80,80,.25); } }
+.letterbomb { position: absolute; inset: 0; z-index: 80; background: #000; color: #3cff6b; font: 700 2.6vh/1.5 "Courier New", monospace; padding: 6vh 6vw; text-shadow: 0 0 8px rgba(60,255,107,.7); }
+#screen.glitch { animation: glitch .18s steps(2) infinite; }
+@keyframes glitch { 0% { transform: translate(0,0); filter: none; } 25% { transform: translate(-6px,3px); filter: hue-rotate(90deg) saturate(3); } 50% { transform: translate(5px,-4px); } 75% { transform: translate(-3px,-2px); filter: invert(1); } }
+#screen.disco { animation: disco 6s linear infinite; }
+@keyframes disco { to { filter: hue-rotate(360deg); } }

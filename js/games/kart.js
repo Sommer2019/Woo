@@ -3,6 +3,7 @@
 import * as THREE from '../lib/three.module.min.js';
 import { overlay, ordinal, bigText } from './common.js';
 import { SKINS, HAIRS } from '../me.js';
+import { cheat } from '../cheats.js';
 
 const TRACKS = [
   {
@@ -221,6 +222,7 @@ export function create(api) {
     head.position.set(0, 1.85, -0.4); g.add(head);
     const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 8, 0, Math.PI * 2, 0, 1.6), new THREE.MeshLambertMaterial({ color: me ? HAIRS[me.hair] : col }));
     helmet.position.set(0, 1.9, -0.45); helmet.rotation.x = -0.35; g.add(helmet);
+    if (cheat('bigHead')) for (const m of [head, helmet]) { m.scale.setScalar(2.2); m.position.y += 0.6; }
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
     for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), eyeMat); e.position.set(0.12 * s, 1.9, -0.06); g.add(e); }
     // drift sparks
@@ -371,7 +373,7 @@ export function create(api) {
 
     const lateral = latOffset(k);
     const off = Math.abs(lateral) > W + 1.2;
-    let max = MAX_SPEED * (k.human ? 1 : k.ai.skill);
+    let max = MAX_SPEED * (k.human ? (cheat('turbo') ? 1.35 : 1) : k.ai.skill);
     if (!k.human) {
       const lead = karts.filter((o) => o.human).reduce((m, o) => Math.max(m, progress(o)), 0);
       if (progress(k) < lead - 60) max *= 1.08; // rubber band
